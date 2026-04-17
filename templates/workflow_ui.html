@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Workflow UI</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --surface2: #21262d;
+    --border: #30363d; --text: #e6edf3; --text-dim: #8b949e;
+    --accent: #58a6ff; --accent2: #3fb950; --warn: #d29922;
+    --danger: #f85149; --mono: "Cascadia Code", "Fira Code", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; min-height: 100vh; }
+
+  /* ── Header ── */
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  header h1 { font-size: 0.9rem; color: var(--text); font-family: var(--mono); font-weight: 600; }
+  .header-badge { font-size: 0.72rem; padding: 2px 8px; border-radius: 12px; background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); font-family: var(--mono); }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 0; padding: 0 24px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .tab { padding: 10px 20px; cursor: pointer; color: var(--text-dim); border-bottom: 2px solid transparent; font-size: 0.9rem; transition: all .15s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .panel { display: none; padding: 24px; max-width: 1100px; margin: 0 auto; }
+  .panel.active { display: block; }
+
+  /* ── Cards ── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+  .card-title { font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 14px; font-family: var(--mono); }
+  .card-title span { color: var(--accent); }
+
+  /* ── Form ── */
+  label { display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 4px; font-family: var(--mono); }
+  input[type="text"], select, textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 8px 12px; font-size: 0.9rem; font-family: inherit; outline: none; transition: border-color .15s; }
+  input[type="text"]:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; font-family: var(--mono); font-size: 0.82rem; line-height: 1.6; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .row3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; }
+  .form-group { margin-bottom: 14px; }
+
+  /* ── Buttons ── */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 0.85rem; cursor: pointer; font-family: var(--mono); transition: all .15s; }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+  .btn-primary:hover { background: #79c0ff; border-color: #79c0ff; }
+  .btn-danger { border-color: var(--danger); color: var(--danger); }
+  .btn-danger:hover { background: var(--danger); color: #fff; }
+  .btn-sm { padding: 4px 10px; font-size: 0.75rem; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Agent cards ── */
+  .agent-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; overflow: hidden; }
+  .agent-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; background: var(--surface2); transition: background .1s; }
+  .agent-header:hover { background: #2d333b; }
+  .agent-handle { color: var(--text-dim); cursor: grab; font-size: 1.1rem; }
+  .agent-name { font-family: var(--mono); font-size: 0.9rem; color: var(--accent); font-weight: 600; flex: 1; }
+  .agent-desc { font-size: 0.8rem; color: var(--text-dim); flex: 2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .agent-toggle { color: var(--text-dim); font-size: 0.8rem; transition: transform .2s; }
+  .agent-toggle.open { transform: rotate(90deg); }
+  .agent-body { display: none; padding: 16px; border-top: 1px solid var(--border); }
+  .agent-body.open { display: block; }
+  .agent-actions { display: flex; gap: 8px; margin-bottom: 12px; }
+
+  /* ── Status cards ── */
+  .status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .status-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .status-label { font-size: 0.72rem; color: var(--text-dim); font-family: var(--mono); text-transform: uppercase; margin-bottom: 4px; }
+  .status-value { font-size: 1rem; font-weight: 600; font-family: var(--mono); }
+  .status-value.done { color: var(--accent2); }
+  .status-value.running { color: var(--warn); }
+  .status-value.error { color: var(--danger); }
+
+  /* ── Terminal ── */
+  #terminal { background: #000; border: 1px solid var(--border); border-radius: 8px; padding: 16px; font-family: var(--mono); font-size: 0.78rem; line-height: 1.7; color: #c9d1d9; height: 340px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+  #terminal .info { color: var(--accent); }
+  #terminal .warn { color: var(--warn); }
+  #terminal .err { color: var(--danger); }
+
+  /* ── Workflow actions ── */
+  .action-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .action-row .form-group { margin-bottom: 0; flex: 1; min-width: 200px; }
+
+  /* ── Tags ── */
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; font-family: var(--mono); background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); margin: 2px; }
+  .tag.done { background: rgba(63,185,80,.15); border-color: var(--accent2); color: var(--accent2); }
+
+  /* ── Artifact list ── */
+  .artifact-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 12px; }
+  .artifact-item { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; cursor: pointer; transition: all .15s; display: flex; justify-content: space-between; align-items: center; }
+  .artifact-item:hover { border-color: var(--accent); }
+  .artifact-name { font-family: var(--mono); font-size: 0.82rem; color: var(--text); }
+  .artifact-size { font-size: 0.72rem; color: var(--text-dim); }
+
+  /* ── Modal ── */
+  #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; align-items: center; justify-content: center; }
+  #modal-overlay.open { display: flex; }
+  #modal { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; width: min(900px, 95vw); max-height: 85vh; display: flex; flex-direction: column; }
+  #modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 0.9rem; }
+  #modal-close { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 1.2rem; }
+  #modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+  #modal-body pre { white-space: pre-wrap; word-break: break-all; font-size: 0.82rem; line-height: 1.7; font-family: var(--mono); color: var(--text); }
+
+  /* ── Toast ── */
+  #toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 18px; font-size: 0.85rem; font-family: var(--mono); z-index: 200; display: none; transition: opacity .3s; }
+  #toast.show { display: block; }
+  #toast.ok { border-color: var(--accent2); color: var(--accent2); }
+  #toast.err { border-color: var(--danger); color: var(--danger); }
+
+  /* ── Save bar ── */
+  .save-bar { position: sticky; bottom: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 12px 24px; display: flex; gap: 12px; align-items: center; margin-top: 20px; border-radius: 8px; }
+
+  /* ── Misc ── */
+  hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  .flex { display: flex; gap: 10px; align-items: center; }
+  .mt8 { margin-top: 8px; }
+  .mt16 { margin-top: 16px; }
+  .mb8 { margin-bottom: 8px; }
+  .text-dim { color: var(--text-dim); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <img src="/static/tiger-logo_002.jpg?2" width="48" height="48" alt="tiger" style="border-radius:8px;object-fit:cover;border:1px solid #30363d;flex-shrink:0;">
+    <h1 style="font-size:0.88rem;letter-spacing:.02em;">標虎團隊 <span style="color:#8b949e;font-weight:400;">Agent Workflow UI</span></h1>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <span class="header-badge" id="project-badge">—</span>
+    <span class="header-badge" id="version-badge">v1.0</span>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="dashboard">📊 儀表板</div>
+  <div class="tab" data-tab="config">⚙️ 設定</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- PANEL 1: Dashboard -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="panel active" id="panel-dashboard">
+
+  <!-- Status -->
+  <div class="card">
+    <div class="card-title">📡 工作流狀態 <span id="status-agent"></span></div>
+    <div class="status-grid" id="status-grid">
+      <div class="status-item"><div class="status-label">Status</div><div class="status-value" id="s-status">—</div></div>
+      <div class="status-item"><div class="status-label">Round</div><div class="status-value" id="s-round">—</div></div>
+      <div class="status-item"><div class="status-label">Current</div><div class="status-value" id="s-current">—</div></div>
+      <div class="status-item"><div class="status-label">Next</div><div class="status-value" id="s-next">—</div></div>
+    </div>
+    <div class="form-group">
+      <label>需求描述</label>
+      <div id="s-demand" style="font-size:0.9rem;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;">—</div>
+    </div>
+    <div>
+      <label>已完成 Agent</label>
+      <div id="s-completed" style="margin-top:6px;"></div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="card">
+    <div class="card-title">🚀 操作</div>
+    <div class="action-row">
+      <div class="form-group">
+        <label>Config 檔</label>
+        <select id="cfg-select"><option>載入中…</option></select>
+      </div>
+      <div class="form-group" style="flex:2;">
+        <label>需求描述</label>
+        <input type="text" id="demand-input" placeholder="例如：新增會員點數功能">
+      </div>
+    </div>
+    <div class="action-row mt16">
+      <button class="btn btn-primary" id="btn-start" onclick="startWorkflow()">▶ 啟動工作流</button>
+      <button class="btn" id="btn-resume" onclick="resumeWorkflow()">⏸ 繼續（resume）</button>
+      <button class="btn" id="btn-stop" onclick="stopWorkflow()" disabled style="color:var(--danger);border-color:var(--danger);">■ 停止</button>
+    </div>
+
+    <hr>
+
+    <div class="action-row">
+      <div class="form-group">
+        <label>單一 Agent</label>
+        <select id="agent-select"><option value="">— 選擇 Agent —</option></select>
+      </div>
+      <div class="form-group" style="flex:2;">
+        <label>自訂任務（可留空）</label>
+        <input type="text" id="single-task" placeholder="指定任務或留空用預設 prompt">
+      </div>
+      <div style="padding-top:22px;">
+        <button class="btn" id="btn-run" onclick="runSingle()">🔄 執行</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Terminal -->
+  <div class="card">
+    <div class="card-title">📟 執行輸出 <span style="font-size:0.7rem;color:var(--text-dim);font-weight:normal;">（即時串流）</span></div>
+    <div id="terminal">等待執行…</div>
+    <div class="mt8 flex">
+      <button class="btn btn-sm" onclick="clearTerminal()">🗑 清除</button>
+      <span class="text-dim" id="proc-status"></span>
+    </div>
+  </div>
+
+  <!-- Artifacts -->
+  <div class="card">
+    <div class="card-title">📦 Artifacts</div>
+    <div class="artifact-list" id="artifact-list"><span class="text-dim">載入中…</span></div>
+  </div>
+
+  <!-- Log -->
+  <div class="card">
+    <div class="card-title">📝 Log</div>
+    <pre id="log-content" style="font-size:0.78rem;font-family:var(--mono);line-height:1.7;max-height:300px;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;color:var(--text-dim);">載入中…</pre>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- PANEL 2: Config Editor -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="panel" id="panel-config">
+
+  <div class="card">
+    <div class="card-title">基本設定</div>
+    <div class="row3">
+      <div class="form-group"><label>Workflow 名稱</label><input type="text" id="cfg-name"></div>
+      <div class="form-group"><label>版本</label><input type="text" id="cfg-version"></div>
+      <div class="form-group"><label>分支</label><input type="text" id="cfg-branch"></div>
+    </div>
+    <div class="row">
+      <div class="form-group"><label>project_root</label><input type="text" id="cfg-project-root"></div>
+      <div class="form-group"><label>git_remote</label><input type="text" id="cfg-git-remote"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🤖 Agents <span id="agent-count" style="font-size:0.75rem;font-weight:normal;"></span></div>
+    <div id="agent-list"></div>
+    <button class="btn mt8" onclick="addAgent()">＋ 新增 Agent</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">交接提示（handoff_footer）</div>
+    <textarea id="cfg-footer" rows="5" placeholder="每輪自動附加到 Agent prompt 的提示文字…"></textarea>
+  </div>
+
+  <div class="save-bar">
+    <div class="form-group" style="margin:0;flex:1;">
+      <input type="text" id="save-as" placeholder="另存為新檔（如 config.myproject.yaml），留空則覆寫當前">
+    </div>
+    <button class="btn btn-primary" onclick="saveConfig()">💾 儲存</button>
+    <button class="btn" onclick="reloadConfig()">↺ 重新載入</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- Modal -->
+<!-- ═══════════════════════════════════════════ -->
+<div id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div id="modal">
+    <div id="modal-header">
+      <span id="modal-title">Artifact</span>
+      <button id="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body"><pre></pre></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ──────────────────────────────────────────────
+// State
+// ──────────────────────────────────────────────
+let currentConfig = "config.yaml";
+let agents = [];
+let es = null;  // EventSource for SSE
+
+// ──────────────────────────────────────────────
+// Init
+// ──────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => switchTab(t.dataset.tab)));
+  loadConfigs();
+  refreshStatus();
+  loadArtifacts();
+  loadLog();
+  setInterval(refreshStatus, 5000);
+});
+
+function switchTab(name) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === `panel-${name}`));
+  if (name === "config") reloadConfig();
+}
+
+// ──────────────────────────────────────────────
+// Toast
+// ──────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type="ok") {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = "", 3000);
+}
+
+// ──────────────────────────────────────────────
+// Dashboard: Configs
+// ──────────────────────────────────────────────
+async function loadConfigs() {
+  const r = await fetch("/api/configs");
+  const list = await r.json();
+  const sel = document.getElementById("cfg-select");
+  const opt0 = sel.options[0];
+  sel.innerHTML = "";
+  list.forEach(c => {
+    const o = document.createElement("option");
+    o.value = c.name;
+    o.textContent = `${c.name} — ${c.label} (${c.project_root})`;
+    sel.appendChild(o);
+  });
+  if (list.find(c => c.name === currentConfig)) sel.value = currentConfig;
+  sel.addEventListener("change", () => { currentConfig = sel.value; reloadConfig(); });
+}
+
+// ──────────────────────────────────────────────
+// Dashboard: Status
+// ──────────────────────────────────────────────
+async function refreshStatus() {
+  try {
+    const r = await fetch("/api/status");
+    const h = await r.json();
+    const statusEl = document.getElementById("s-status");
+    statusEl.textContent = h.status || "—";
+    statusEl.className = "status-value " + (h.status === "completed" ? "done" : h.status === "in_progress" ? "running" : "");
+    document.getElementById("s-round").textContent = h.round || "—";
+    document.getElementById("s-current").textContent = h.current_agent || "—";
+    document.getElementById("s-next").textContent = h.next_agent || "—";
+    document.getElementById("s-demand").textContent = h.user_demand || "—";
+    document.getElementById("status-agent").textContent = h.current_agent ? `→ ${h.current_agent}` : "";
+
+    const completed = h.completed_agent || [];
+    document.getElementById("s-completed").innerHTML = completed.length
+      ? completed.map(a => `<span class="tag done">✓ ${a}</span>`).join("")
+      : "<span class='text-dim'>尚無</span>";
+
+    // Update badge
+    const cfgSel = document.getElementById("cfg-select");
+    const cfgName = cfgSel.value || currentConfig;
+    document.getElementById("project-badge").textContent = cfgName;
+
+    // Populate agent-select
+    await loadAgentsForSelect();
+  } catch(e) { console.error(e); }
+}
+
+async function loadAgentsForSelect() {
+  try {
+    const r = await fetch(`/api/config/${currentConfig}`);
+    if (!r.ok) return;
+    const cfg = await r.json();
+    const sel = document.getElementById("agent-select");
+    sel.innerHTML = "<option value=''>— 選擇 Agent —</option>";
+    (cfg.agents || []).forEach(a => {
+      const o = document.createElement("option");
+      o.value = a.name;
+      o.textContent = `${a.name} — ${a.description || ""}`;
+      sel.appendChild(o);
+    });
+  } catch(e) {}
+}
+
+// ──────────────────────────────────────────────
+// Dashboard: Artifacts
+// ──────────────────────────────────────────────
+async function loadArtifacts() {
+  try {
+    const r = await fetch("/api/artifacts");
+    const list = await r.json();
+    const el = document.getElementById("artifact-list");
+    if (!list.length) { el.innerHTML = "<span class='text-dim'>無 artifacts</span>"; return; }
+    el.innerHTML = list.map(a => `
+      <div class="artifact-item" onclick="viewArtifact('${a.name}')">
+        <span class="artifact-name">${a.name}</span>
+        <span class="artifact-size">${fmtSize(a.size)}</span>
+      </div>`).join("");
+  } catch(e) { document.getElementById("artifact-list").innerHTML = "<span class='text-dim'>讀取失敗</span>"; }
+}
+
+async function viewArtifact(name) {
+  const r = await fetch(`/api/artifacts/${encodeURIComponent(name)}`);
+  const d = await r.json();
+  openModal(name, d.content || d.error);
+}
+
+function fmtSize(n) {
+  if (n < 1024) return n + "B";
+  if (n < 1024*1024) return (n/1024).toFixed(1) + "KB";
+  return (n/1024/1024).toFixed(1) + "MB";
+}
+
+// ──────────────────────────────────────────────
+// Dashboard: Log
+// ──────────────────────────────────────────────
+async function loadLog() {
+  try {
+    const r = await fetch("/api/log");
+    const d = await r.json();
+    document.getElementById("log-content").textContent = d.content || "(無 log)";
+  } catch(e) { document.getElementById("log-content").textContent = "讀取失敗"; }
+}
+
+// ──────────────────────────────────────────────
+// Dashboard: Workflow actions
+// ──────────────────────────────────────────────
+async function startWorkflow() {
+  const demand = document.getElementById("demand-input").value.trim();
+  if (!demand) { toast("請輸入需求描述", "err"); return; }
+  const config = document.getElementById("cfg-select").value;
+  document.getElementById("btn-start").disabled = true;
+  document.getElementById("btn-resume").disabled = true;
+  clearTerminal();
+  appendTerm("info", `▶ 啟動工作流：${demand}\n`);
+  appendTerm("", "─".repeat(50) + "\n");
+  const r = await fetch("/api/workflow/start", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ demand, config })
+  });
+  const d = await r.json();
+  if (d.error) { toast(d.error, "err"); } else { connectStream(); }
+}
+
+async function resumeWorkflow() {
+  const config = document.getElementById("cfg-select").value;
+  document.getElementById("btn-start").disabled = true;
+  document.getElementById("btn-resume").disabled = true;
+  clearTerminal();
+  appendTerm("info", "⏸ 從中斷點繼續…\n");
+  appendTerm("", "─".repeat(50) + "\n");
+  await fetch("/api/workflow/resume", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ config })
+  });
+  connectStream();
+}
+
+async function runSingle() {
+  const agent = document.getElementById("agent-select").value;
+  const task = document.getElementById("single-task").value.trim();
+  const config = document.getElementById("cfg-select").value;
+  if (!agent) { toast("請選擇 Agent", "err"); return; }
+  document.getElementById("btn-start").disabled = true;
+  document.getElementById("btn-resume").disabled = true;
+  clearTerminal();
+  appendTerm("info", `🔄 執行：${agent}\n`);
+  appendTerm("", "─".repeat(50) + "\n");
+  await fetch("/api/workflow/run", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ agent, task, config })
+  });
+  connectStream();
+}
+
+async function stopWorkflow() {
+  // Runner.sh 不支援直接 kill，這裡只停 SSE
+  disconnectStream();
+  document.getElementById("btn-start").disabled = false;
+  document.getElementById("btn-resume").disabled = false;
+  appendTerm("warn", "\n⚠ 停止監聽（process 可能仍在執行）\n");
+}
+
+function connectStream() {
+  disconnectStream();
+  es = new EventSource("/api/workflow/stream");
+  document.getElementById("proc-status").textContent = "● 執行中…";
+  es.onmessage = e => {
+    const line = e.data;
+    if (line.startsWith("[ERROR]")) { appendTerm("err", line); }
+    else if (line.startsWith("[INFO]")) { appendTerm("info", line + "\n"); }
+    else if (line.startsWith("[WARN]")) { appendTerm("warn", line + "\n"); }
+    else { appendTerm("", line); }
+  };
+  es.onerror = () => {
+    document.getElementById("proc-status").textContent = "○ 已結束";
+    document.getElementById("btn-start").disabled = false;
+    document.getElementById("btn-resume").disabled = false;
+    refreshStatus();
+    loadArtifacts();
+    loadLog();
+    es.close();
+    es = null;
+  };
+}
+
+function disconnectStream() {
+  if (es) { es.close(); es = null; }
+  document.getElementById("proc-status").textContent = "";
+}
+
+function appendTerm(cls, text) {
+  const t = document.getElementById("terminal");
+  if (cls) { const s = document.createElement("span"); s.className = cls; s.textContent = text; t.appendChild(s); }
+  else { t.appendChild(document.createTextNode(text)); }
+  t.scrollTop = t.scrollHeight;
+}
+
+function clearTerminal() {
+  document.getElementById("terminal").innerHTML = "";
+}
+
+// ──────────────────────────────────────────────
+// Modal
+// ──────────────────────────────────────────────
+function openModal(title, content) {
+  document.getElementById("modal-title").textContent = title;
+  document.getElementById("modal-body").innerHTML = `<pre>${escHtml(content)}</pre>`;
+  document.getElementById("modal-overlay").classList.add("open");
+}
+function closeModal() { document.getElementById("modal-overlay").classList.remove("open"); }
+function escHtml(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+// ──────────────────────────────────────────────
+// Config Editor
+// ──────────────────────────────────────────────
+async function reloadConfig() {
+  const sel = document.getElementById("cfg-select");
+  const name = sel ? sel.value : currentConfig;
+  try {
+    const r = await fetch(`/api/config/${name}`);
+    if (!r.ok) return;
+    const cfg = await r.json();
+    currentConfig = name;
+    document.getElementById("cfg-name").value = cfg.name || "";
+    document.getElementById("cfg-version").value = cfg.version || "";
+    document.getElementById("cfg-project-root").value = cfg.project_root || "";
+    document.getElementById("cfg-git-remote").value = cfg.git_remote || "";
+    document.getElementById("cfg-branch").value = cfg.git_branch || "";
+    document.getElementById("cfg-footer").value = cfg.handoff_footer || "";
+    document.getElementById("version-badge").textContent = `v${cfg.version || "?"}`;
+    agents = cfg.agents || [];
+    renderAgents();
+  } catch(e) { toast("載入失敗", "err"); }
+}
+
+function renderAgents() {
+  document.getElementById("agent-count").textContent = `（${agents.length} 個）`;
+  const el = document.getElementById("agent-list");
+  if (!agents.length) { el.innerHTML = "<div class='text-dim'>尚無 Agent，點「＋ 新增」</div>"; return; }
+  el.innerHTML = agents.map((a, i) => `
+    <div class="agent-card" id="ac-${i}">
+      <div class="agent-header" onclick="toggleAgent(${i})">
+        <span class="agent-handle">☰</span>
+        <span class="agent-name">${escHtml(a.name || "")}</span>
+        <span class="agent-desc">${escHtml(a.description || "")}</span>
+        <span class="agent-toggle" id="at-${i}">▶</span>
+      </div>
+      <div class="agent-body" id="ab-${i}">
+        <div class="agent-actions">
+          <button class="btn btn-sm" onclick="moveAgent(${i}, -1)">↑ 上移</button>
+          <button class="btn btn-sm" onclick="moveAgent(${i}, 1)">↓ 下移</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteAgent(${i})">✕ 刪除</button>
+        </div>
+        <div class="row">
+          <div class="form-group"><label>name</label><input type="text" value="${escHtml(a.name||"")}" onchange="agents[${i}].name=this.value;renderAgents()"></div>
+          <div class="form-group"><label>description</label><input type="text" value="${escHtml(a.description||"")}" onchange="agents[${i}].description=this.value;renderAgents()"></div>
+        </div>
+        <div class="form-group"><label>prompt_template</label><textarea rows="6" onchange="agents[${i}].prompt_template=this.value">${escHtml(a.prompt_template||"")}</textarea></div>
+        <div class="row">
+          <div class="form-group"><label>artifacts（JSON 陣列 or 逗點分隔）</label><input type="text" value="${escHtml((a.artifacts||[]).join(", "))}" onchange="agents[${i}].artifacts=this.value.split(',').map(s=>s.trim()).filter(Boolean)"></div>
+          <div class="form-group"><label>commit_message</label><input type="text" value="${escHtml(a.commit_message||"")}" onchange="agents[${i}].commit_message=this.value"></div>
+        </div>
+      </div>
+    </div>`).join("");
+}
+
+function toggleAgent(i) {
+  const body = document.getElementById(`ab-${i}`);
+  const toggle = document.getElementById(`at-${i}`);
+  const open = body.classList.toggle("open");
+  toggle.classList.toggle("open", open);
+  toggle.textContent = open ? "▼" : "▶";
+}
+
+function addAgent() {
+  agents.push({ name: "new-agent", description: "描述", prompt_template: "任務：\n", artifacts: [], commit_message: "chore: new-agent" });
+  renderAgents();
+  toggleAgent(agents.length - 1);
+}
+
+function deleteAgent(i) {
+  agents.splice(i, 1);
+  renderAgents();
+}
+
+function moveAgent(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= agents.length) return;
+  [agents[i], agents[j]] = [agents[j], agents[i]];
+  renderAgents();
+}
+
+async function saveConfig() {
+  const saveAs = document.getElementById("save-as").value.trim();
+  const name = saveAs || currentConfig;
+  if (!name.endsWith(".yaml")) return toast("檔名需以 .yaml 結尾", "err");
+
+  const cfg = {
+    name: document.getElementById("cfg-name").value,
+    version: document.getElementById("cfg-version").value,
+    project_root: document.getElementById("cfg-project-root").value,
+    git_remote: document.getElementById("cfg-git-remote").value,
+    git_branch: document.getElementById("cfg-branch").value,
+    agents: agents.map(a => ({
+      ...a,
+      artifacts: typeof a.artifacts === "string"
+        ? a.artifacts.split(",").map(s => s.trim()).filter(Boolean)
+        : (a.artifacts || [])
+    })),
+    handoff_footer: document.getElementById("cfg-footer").value,
+  };
+
+  const r = await fetch("/api/config", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ ...cfg, name })
+  });
+  const d = await r.json();
+  if (d.ok) {
+    toast(`已儲存：${name}`);
+    document.getElementById("save-as").value = "";
+    if (!saveAs) { reloadConfig(); }
+    else { currentConfig = name; await loadConfigs(); }
+  } else {
+    toast("儲存失敗：" + (d.error || ""), "err");
+  }
+}
+</script>
+</body>
+</html>
