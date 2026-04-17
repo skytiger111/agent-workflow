@@ -1,0 +1,19 @@
+{
+  "round": 0,
+  "current_agent": null,
+  "next_agent": null,
+  "completed_agent": null,
+  "user_demand": "",
+  "last_outputs": [],
+  "focus_for_next": "",
+  "timestamp": null,
+  "status": "idle",
+  "artifacts": {
+    "spec": null,
+    "api_contract": null,
+    "frontend_spec": null,
+    "test_report": null,
+    "deploy_status": null
+  },
+  "git_commits": []
+}

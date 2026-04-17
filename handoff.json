@@ -1,0 +1,18 @@
+{
+  "round": 0,
+  "current_agent": null,
+  "next_agent": "analyzer",
+  "completed_agent": [],
+  "user_demand": "",
+  "last_outputs": [],
+  "focus_for_next": "",
+  "timestamp": null,
+  "status": "idle",
+  "artifacts": {
+    "spec": "shared-context/artifacts/SPEC.md",
+    "api_contract": "shared-context/artifacts/api-contract.md",
+    "frontend_spec": "shared-context/artifacts/component-spec.md",
+    "test_report": "shared-context/artifacts/test-report.md",
+    "deploy_status": "shared-context/artifacts/deploy-status.md"
+  }
+}
