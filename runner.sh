@@ -1,21 +1,25 @@
 #!/bin/bash
 #===============================================
-# Agent Workflow Runner — 點餐系統實例
-# 串接 analyzer → backend-dev → frontend-dev → tester → deployer
-# 中斷後可從 handoff.json 記錄點繼續
+# Agent Workflow Runner — 重構版
+# 支援 config.yaml 自訂工作流、真正可用的 resume、jq 寫入 JSON
 #===============================================
 
-set -e
+set -euo pipefail
 
-# 預設指向 order-system 專案（可透過環境變數覆寫）
-PROJECT_ROOT="${PROJECT_ROOT:-/Users/tigerclaw/code/order-system}"
+#------------------------------------------
+# 預設值（可被 config.yaml 覆寫）
+#------------------------------------------
 WORKFLOW_DIR="$(cd "$(dirname "$0")" && pwd)"
-CONTEXT_DIR="$WORKFLOW_DIR/shared-context"
-LOG_FILE="$WORKFLOW_DIR/log.md"
-HANDOFF="$WORKFLOW_DIR/handoff.json"
-GIT_REMOTE="https://github.com/skytiger111/order-system.git"
-
-AGENTS=("analyzer" "backend-dev" "frontend-dev" "tester" "deployer")
+CONFIG_FILE="${WORKFLOW_DIR}/config.yaml"
+CONTEXT_DIR="${WORKFLOW_DIR}/shared-context"
+ARTIFACTS_DIR="${CONTEXT_DIR}/artifacts"
+LOG_FILE="${WORKFLOW_DIR}/log.md"
+HANDOFF="${WORKFLOW_DIR}/handoff.json"
+PROJECT_ROOT=""
+GIT_REMOTE=""
+GIT_BRANCH="main"
+AGENTS=()
+HANDSOFF_FOOTER=""
 
 #------------------------------------------
 # 工具函式
@@ -25,77 +29,77 @@ warn()  { echo "[WARN]  $*" >&2; }
 error() { echo "[ERROR] $*" >&2; exit 1; }
 
 #------------------------------------------
-# 確保在專案目錄
+# 嘗試讀取 config.yaml
 #------------------------------------------
-cd_project() { cd "$PROJECT_ROOT" || error "無法進入專案目錄: $PROJECT_ROOT"; }
+load_config() {
+  local cfg="${1:-${CONFIG_FILE}}"
+  if [[ -f "$cfg" ]]; then
+    CONFIG_FILE="$cfg"
+    info "載入設定檔: $cfg"
+  else
+    warn "設定檔不存在: $cfg，使用預設值"
+    return 1
+  fi
+
+  if command -v python3 &>/dev/null; then
+    PROJECT_ROOT=$(python3 -c "
+import yaml, sys
+with open('$cfg') as f:
+    cfg = yaml.safe_load(f)
+print(cfg.get('project_root', ''))
+" 2>/dev/null || echo "")
+
+    GIT_REMOTE=$(python3 -c "
+import yaml, sys
+with open('$cfg') as f:
+    cfg = yaml.safe_load(f)
+print(cfg.get('git_remote', ''))
+" 2>/dev/null || echo "")
+
+    GIT_BRANCH=$(python3 -c "
+import yaml, sys
+with open('$cfg') as f:
+    cfg = yaml.safe_load(f)
+print(cfg.get('git_branch', 'main'))
+" 2>/dev/null || echo "main")
+
+    HANDSOFF_FOOTER=$(python3 -c "
+import yaml, sys
+with open('$cfg') as f:
+    cfg = yaml.safe_load(f)
+footer = cfg.get('handoff_footer', '')
+print(footer)
+" 2>/dev/null || echo "")
+  else
+    warn "python3 不可用，無法解析 YAML，請手動設定"
+  fi
+}
 
 #------------------------------------------
 # 初始化目錄結構
 #------------------------------------------
 init_dirs() {
-  mkdir -p "$CONTEXT_DIR/artifacts"
-  if [[ ! -f "$LOG_FILE" ]]; then
-    cat > "$LOG_FILE" << 'EOF'
-# Workflow Log — 點餐系統
-EOF
-  fi
-  if [[ ! -f "$HANDOFF" ]]; then
-    echo '{}' > "$HANDOFF"
-  fi
+  mkdir -p "$ARTIFACTS_DIR"
+  [[ ! -f "$LOG_FILE" ]] && echo "# Workflow Log" > "$LOG_FILE"
+  [[ ! -f "$HANDOFF" ]] && echo '{}' > "$HANDOFF"
+  true
 }
 
 #------------------------------------------
-# 讀取 handoff 欄位
+# jq helper：讀取 JSON 欄位
 #------------------------------------------
-get_handoff() {
-  local key="$1"
-  local default="${2:-}"
-  jq -r ".$key // \"$default\"" "$HANDOFF" 2>/dev/null || echo "$default"
+jq_get() {
+  python3 "$WORKFLOW_DIR/lib/handoff.py" "$ARTIFACTS_DIR" "$HANDOFF" get "$1" "$2"
 }
 
-#------------------------------------------
-# 讀取 completed_agent 陣列
-#------------------------------------------
-get_completed() {
-  jq -r '.completed_agent // [] | if type == "array" then .[] else empty end' "$HANDOFF" 2>/dev/null
-}
 
 #------------------------------------------
-# 寫入 handoff（完整重建）
+# 更新 handoff（Python 確保 JSON 型別正確）
 #------------------------------------------
 write_handoff() {
-  local round="$1"
-  local agent="$2"
-  local next="$3"
-  local outputs="$4"
-  local focus="$5"
-
-  # 收集已完成的 agent 列表
-  local completed_list
-  completed_list=$(get_completed)
-  [[ -n "$completed_list" ]] && completed_list=$(echo "$completed_list" | jq -R . | jq -s .)
-
-  cat > "$HANDOFF" << EOF
-{
-  "round": $round,
-  "current_agent": "$agent",
-  "next_agent": "$next",
-  "completed_agent": $(get_completed; echo "$agent" | jq -R . | jq -s '(. // []) + [.]'),
-  "user_demand": "$(get_handoff 'user_demand' '')",
-  "last_outputs": ["$outputs"],
-  "focus_for_next": "$focus",
-  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "status": "in_progress",
-  "artifacts": {
-    "spec": "$CONTEXT_DIR/artifacts/SPEC.md",
-    "api_contract": "$CONTEXT_DIR/artifacts/api-contract.md",
-    "frontend_spec": "$CONTEXT_DIR/artifacts/component-spec.md",
-    "test_report": "$CONTEXT_DIR/artifacts/test-report.md",
-    "deploy_status": "$CONTEXT_DIR/artifacts/deploy-status.md"
-  }
-}
-EOF
-  info "handoff.json 更新 → $agent → $next"
+  python3 "$WORKFLOW_DIR/lib/handoff.py" \
+    "$ARTIFACTS_DIR" "$HANDOFF" update \
+    "$1" "$2" "$3" "$4" "$5"
 }
 
 #------------------------------------------
@@ -103,49 +107,139 @@ EOF
 #------------------------------------------
 workflow_commit() {
   local msg="$1"
-  cd_project
-  if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
-    git add -A
-    git commit -m "$msg" --allow-empty 2>/dev/null || true
-    local hash
-    hash=$(git rev-parse --short HEAD 2>/dev/null)
-    info "已 commit [$hash]: $msg"
-    return 0
-  else
-    info "無變更，跳過 commit"
+  if [[ ! -d "$PROJECT_ROOT" ]]; then
+    warn "PROJECT_ROOT 不存在: $PROJECT_ROOT，跳過 commit"
     return 1
+  fi
+  (
+    cd "$PROJECT_ROOT" || exit 1
+    if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
+      git add -A
+      if git commit -m "$msg" --allow-empty 2>/dev/null; then
+        local hash
+        hash=$(git rev-parse --short HEAD 2>/dev/null)
+        info "已 commit [$hash]: $msg"
+        return 0
+      else
+        warn "git commit 失敗"
+        return 1
+      fi
+    else
+      info "無變更，跳過 commit"
+      return 1
+    fi
+  )
+}
+
+#------------------------------------------
+# 確認 git remote
+#------------------------------------------
+ensure_remote() {
+  if [[ -z "$PROJECT_ROOT" ]] || [[ ! -d "$PROJECT_ROOT" ]]; then
+    warn "PROJECT_ROOT 無效: $PROJECT_ROOT"
+    return 1
+  fi
+  (
+    cd "$PROJECT_ROOT" || exit 1
+    if [[ -n "$GIT_REMOTE" ]]; then
+      local remote
+      remote=$(git remote get-url origin 2>/dev/null || echo "")
+      if [[ -z "$remote" ]]; then
+        info "設定 remote origin..."
+        git remote add origin "$GIT_REMOTE" 2>/dev/null || git remote set-url origin "$GIT_REMOTE"
+      fi
+    fi
+  )
+}
+
+#------------------------------------------
+# 列出專案檔案
+#------------------------------------------
+list_project_files() {
+  if [[ -d "$PROJECT_ROOT" ]]; then
+    (cd "$PROJECT_ROOT" && find . -maxdepth 3 -type f \( -name "*.py" -o -name "*.js" -o -name "*.html" -o -name "*.css" -o -name "*.yaml" -o -name "*.json" \) | head -40) 2>/dev/null || echo "(專案目錄為空或無法存取)"
+  else
+    echo "(專案目錄不存在: $PROJECT_ROOT)"
   fi
 }
 
 #------------------------------------------
-# 執行單一 Agent（subagent）
+# 替換 prompt 模板中的變數
+#------------------------------------------
+render_prompt() {
+  local template="$1"
+  local project_files
+  project_files=$(list_project_files)
+
+  echo "$template" | sed \
+    -e "s|{user_demand}|$USER_DEMAND|g" \
+    -e "s|{project_root}|$PROJECT_ROOT|g" \
+    -e "s|{artifacts_dir}|$ARTIFACTS_DIR|g" \
+    -e "s|{handoff_file}|$HANDOFF|g" \
+    -e "s|{git_remote}|$GIT_REMOTE|g" \
+    -e "s|{git_branch}|$GIT_BRANCH|g" \
+    -e "s|{project_files}|$project_files|g"
+}
+
+#------------------------------------------
+# 執行單一 Agent
 #------------------------------------------
 run_agent() {
   local agent_name="$1"
-  local task="${2:-}"
-  local focus
-  focus=$(get_handoff "focus_for_next" "")
+  local task="$2"
+  local focus="$3"
+  local commit_msg="$4"
 
-  info "執行 Agent: $agent_name"
+  info "=========================================="
+  info "Agent: $agent_name"
   [[ -n "$focus" ]] && info "囑託: $focus"
+  info "=========================================="
 
-  cd_project
+  # 替換 prompt 模板中的變數（{user_demand}, {project_files} 等）
+  local rendered_task
+  rendered_task=$(render_prompt "$task")
 
-  # 建構給 Agent 的 prompt
-  local agent_prompt="【工作流囑託】
-上輪囑託: $focus
+  # bash 3.2 + set -u 會在 heredoc 內展開全域變數時出錯
+  # 改用雙引號 heredoc（不展開變數）再串接
+  local _prompt_body
+  _prompt_body=$(cat <<'TPL'
+【工作流囑託】
+上輪囑託:
 
 【你的任務】
-$task
 
-【重要】
-完成後：
-1. 將產出寫入 $CONTEXT_DIR/artifacts/ 對應檔案
-2. 更新 $HANDOFF（round、current_agent、next_agent、last_outputs、focus_for_next）
-3. 在 $PROJECT_ROOT 執行 git add + commit"
+【交接提示】
+1. 將產出寫入  對應檔案
+2. 更新 （round、current_agent、next_agent、last_outputs、focus_for_next）
+3. 在  執行 git add + commit
 
-  # 呼叫 Claude Code，切換 Agent
-  claude --agent "$agent_name" --print "$agent_prompt"
+【交接提示（來自 config）】
+TPL
+)
+  local full_prompt="${_prompt_body}"
+  full_prompt="${full_prompt}【工作流囑託】
+上輪囑託: ${focus:-無}
+
+【你的任務】
+${rendered_task}
+
+【交接提示】
+1. 將產出寫入 ${ARTIFACTS_DIR}/ 對應檔案
+2. 更新 ${HANDOFF}（round、current_agent、next_agent、last_outputs、focus_for_next）
+3. 在 ${PROJECT_ROOT} 執行 git add + commit
+
+【交接提示（來自 config）】
+${HANDSOFF_FOOTER:-}
+"
+
+  unset _prompt_body
+
+  if command -v claude &>/dev/null; then
+    # 使用 --agent 讓 subagent 取得專案上下文
+    claude --print --agent "$agent_name" "$full_prompt"
+  else
+    error "claude CLI 未安裝，無法執行 Agent"
+  fi
 }
 
 #------------------------------------------
@@ -167,16 +261,61 @@ EOF
 }
 
 #------------------------------------------
-# 確認 git remote 正確
+# 從 config.yaml 讀取 Agent 列表
 #------------------------------------------
-ensure_remote() {
-  cd_project
-  local remote
-  remote=$(git remote get-url origin 2>/dev/null || echo "")
-  if [[ -z "$remote" ]]; then
-    info "設定 remote origin..."
-    git remote add origin "$GIT_REMOTE" 2>/dev/null || git remote set-url origin "$GIT_REMOTE"
+load_agents_from_config() {
+  if [[ ! -f "$CONFIG_FILE" ]] || ! command -v python3 &>/dev/null; then
+    return 1
   fi
+
+  AGENTS=()
+  local names
+  names=$(python3 "$WORKFLOW_DIR/lib/load_agents.py" "$CONFIG_FILE") || return 1
+
+  for name in $names; do
+    [[ -n "$name" ]] && AGENTS+=("$name")
+  done
+}
+
+#------------------------------------------
+# 從 config.yaml 取得 Agent prompt
+#------------------------------------------
+get_agent_prompt() {
+  local agent="$1"
+  local user_demand="$2"
+
+  if [[ -f "$CONFIG_FILE" ]] && command -v python3 &>/dev/null; then
+    python3 "$WORKFLOW_DIR/lib/query_config.py" "$CONFIG_FILE" agent_prompt "$agent" 2>/dev/null && return
+  fi
+
+  echo "執行 $agent，需求：$user_demand"
+}
+
+#------------------------------------------
+# 從 config.yaml 取得 Agent focus
+#------------------------------------------
+get_agent_focus() {
+  local agent="$1"
+  local next="$2"
+
+  if [[ -f "$CONFIG_FILE" ]] && command -v python3 &>/dev/null; then
+    python3 "$WORKFLOW_DIR/lib/query_config.py" "$CONFIG_FILE" agent_focus "$agent" 2>/dev/null && return
+  fi
+
+  echo "交接給下一個 Agent: $next"
+}
+
+#------------------------------------------
+# 從 config.yaml 取得 Agent commit message
+#------------------------------------------
+get_agent_commit() {
+  local agent="$1"
+
+  if [[ -f "$CONFIG_FILE" ]] && command -v python3 &>/dev/null; then
+    python3 "$WORKFLOW_DIR/lib/query_config.py" "$CONFIG_FILE" agent_commit "$agent" 2>/dev/null && return
+  fi
+
+  echo "chore: $agent 完成"
 }
 
 #------------------------------------------
@@ -186,157 +325,58 @@ cmd_start() {
   local user_demand="${1:-}"
   [[ -z "$user_demand" ]] && error "請提供需求：./runner.sh start \"你的需求\""
 
+  load_config "${2:-${CONFIG_FILE}}"
+  load_agents_from_config
+
+  if [[ ${#AGENTS[@]} -eq 0 ]]; then
+    warn "無法從 config.yaml 讀取 Agent 列表，使用預設值"
+    AGENTS=("analyzer" "backend-dev" "frontend-dev" "tester" "deployer")
+    [[ -z "$PROJECT_ROOT" ]] && PROJECT_ROOT="/Users/tigerclaw/code/order-system"
+    [[ -z "$GIT_REMOTE" ]] && GIT_REMOTE="https://github.com/skytiger111/order-system.git"
+  fi
+
   init_dirs
   ensure_remote
 
-  # 寫入初始 handoff
-  cat > "$HANDOFF" << EOF
-{
-  "round": 0,
-  "current_agent": null,
-  "next_agent": "analyzer",
-  "completed_agent": [],
-  "user_demand": "$user_demand",
-  "last_outputs": [],
-  "focus_for_next": "分析需求，產出 SPEC.md",
-  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "status": "in_progress",
-  "artifacts": {
-    "spec": "$CONTEXT_DIR/artifacts/SPEC.md",
-    "api_contract": "$CONTEXT_DIR/artifacts/api-contract.md",
-    "frontend_spec": "$CONTEXT_DIR/artifacts/component-spec.md",
-    "test_report": "$CONTEXT_DIR/artifacts/test-report.md",
-    "deploy_status": "$CONTEXT_DIR/artifacts/deploy-status.md"
-  }
-}
-EOF
+  # 使用 Python 初始化 handoff
+  local agents_json
+  agents_json=$(printf '%s\n' "${AGENTS[@]}" | jq -R . | jq -s .)
+  python3 "$WORKFLOW_DIR/lib/handoff.py" \
+    "$ARTIFACTS_DIR" "$HANDOFF" init "$user_demand" "$agents_json"
 
   info "=========================================="
-  info "工作流啟動 — 點餐系統"
+  info "工作流啟動"
   info "需求: $user_demand"
+  info "Agent 數: ${#AGENTS[@]}"
+  info "PROJECT_ROOT: $PROJECT_ROOT"
   info "=========================================="
 
-  #--- Round 1: Analyzer ---
-  info "========== Round 1: Analyzer =========="
-  run_agent "analyzer" "需求：$user_demand
+  for i in "${!AGENTS[@]}"; do
+    local agent="${AGENTS[$i]}"
+    local next="${AGENTS[$((i + 1))]:-}"
 
-現有專案結構（供參考）：
-$(ls "$PROJECT_ROOT")
+    info "========== Round $((i+1)): $agent =========="
 
-現有後端：$PROJECT_ROOT/app.py（Flask，資料庫：SQLite）
+    local task focus commit_msg
+    task=$(get_agent_prompt "$agent" "$user_demand")
+    focus=$(get_agent_focus "$agent" "$next")
+    commit_msg=$(get_agent_commit "$agent")
 
-請產出 $CONTEXT_DIR/artifacts/SPEC.md，包含：
-- 功能範圍與 YAGNI 邊界
-- API 端點（request/response 格式）
-- 資料庫 schema（如有變更）
-- 異常處理對應 HTTP 狀態碼"
+    # 只更新 current/next，不標記完成（成功後才標記）
+    write_handoff $((i+1)) "$agent" "$next" "" "$focus"
+    run_agent "$agent" "$task" "$focus" "$commit_msg" || { warn "Agent $agent 執行失敗"; break; }
+    # 執行成功後才標記為完成
+    python3 "$WORKFLOW_DIR/lib/handoff.py" \
+      "$ARTIFACTS_DIR" "$HANDOFF" update \
+      $((i+1)) "$agent" "$next" "" "$focus" "true"
+    workflow_commit "${commit_msg:-chore: $agent 完成}" || warn "Commit 失敗，將繼續"
+    append_log "$agent" "完成" || true
+  done
 
-  workflow_commit "chore: analyzer 完成需求分析"
-  write_handoff 1 "analyzer" "backend-dev" \
-    "$CONTEXT_DIR/artifacts/SPEC.md" \
-    "依據 SPEC.md 實作後端 API（Flask routes）"
+  python3 "$WORKFLOW_DIR/lib/handoff.py" \
+    "$ARTIFACTS_DIR" "$HANDOFF" complete
 
-  append_log "analyzer" "完成"
-
-  #--- Round 2: Backend ---
-  info "========== Round 2: Backend-Dev =========="
-  run_agent "backend-dev" "依據 SPEC.md 實作後端 API
-
-現有後端入口：$PROJECT_ROOT/app.py
-資料庫工具：$PROJECT_ROOT/database.py
-設定檔：$PROJECT_ROOT/config.py
-現有路由（請勿破壞）：
-- /api/menu GET
-- /api/orders POST, GET <id>
-- /api/admin/orders GET, PUT <id>/status
-- /admin/login GET, POST
-- /api/reports/daily GET
-- /api/checkout POST
-
-請在 $CONTEXT_DIR/artifacts/api-contract.md 補上 API 合約，並實作功能。"
-
-  workflow_commit "feat: backend-dev 完成後端實作"
-  write_handoff 2 "backend-dev" "frontend-dev" \
-    "app.py, database.py, config.py" \
-    "依據 API 合約實作前端（HTML/CSS/JS）"
-
-  append_log "backend-dev" "完成"
-
-  #--- Round 3: Frontend ---
-  info "========== Round 3: Frontend-Dev =========="
-  run_agent "frontend-dev" "依據 SPEC.md 和 api-contract.md 實作前端
-
-現有模板：$PROJECT_ROOT/templates/
-現有靜態檔：$PROJECT_ROOT/static/
-現有後端 API 請見 $CONTEXT_DIR/artifacts/api-contract.md
-
-需實作或更新：
-- templates/index.html（首頁）
-- templates/order.html（點餐頁）
-- templates/admin.html（後台）
-- 對應 static/css/*.css
-
-響應式斷點：桌面 >768px / 手機 ≤768px"
-
-  workflow_commit "feat: frontend-dev 完成前端實作"
-  write_handoff 3 "frontend-dev" "tester" \
-    "templates/, static/" \
-    "為核心功能撰寫單元測試與整合測試"
-
-  append_log "frontend-dev" "完成"
-
-  #--- Round 4: Tester ---
-  info "========== Round 4: Tester =========="
-  run_agent "tester" "為點餐系統撰寫測試
-
-SPEC.md：$CONTEXT_DIR/artifacts/SPEC.md
-後端入口：$PROJECT_ROOT/app.py
-
-測試框架：pytest
-測試目標：
-- API 端點（/api/menu、/api/orders、/api/admin/*）
-- 訂單建立流程
-- 庫存/狀態更新
-- 錯誤情境（404、503、逾時）
-
-測試檔放在 $PROJECT_ROOT/tests/（對應 app/ 目錄結構）
-Mock 外部 API 以確保測試穩定"
-
-  workflow_commit "test: tester 完成測試撰寫"
-  write_handoff 4 "tester" "deployer" \
-    "tests/" \
-    "整理程式碼，推送到 GitHub"
-
-  append_log "tester" "完成"
-
-  #--- Round 5: Deployer ---
-  info "========== Round 5: Deployer =========="
-  run_agent "deployer" "將點餐系統程式碼推送至 GitHub
-
-專案根目錄：$PROJECT_ROOT
-Remote：$GIT_REMOTE
-預設分支：main
-
-工作：
-1. 確認所有檔案已 commit（git status）
-2. git push origin main
-3. 如需初始化 git repo，先 git init 並建立第一個 commit
-4. 更新 $CONTEXT_DIR/artifacts/deploy-status.md（部署狀態）"
-
-  workflow_commit "deploy: 完成部署"
-  write_handoff 5 "deployer" "" \
-    "" \
-    "工作流完成"
-
-  # 最終狀態
-  cat > "$HANDOFF" << 'EOF'
-{
-  "status": "completed",
-  "completed_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-}
-EOF
-
-  append_log "deployer" "完成" "已推送至 GitHub"
+  append_log "workflow" "完成" "所有 Agent 已執行完畢"
 
   info "=========================================="
   info "工作流完成！"
@@ -348,61 +388,119 @@ EOF
 # 從中斷點繼續
 #------------------------------------------
 cmd_resume() {
+  load_config "${2:-${CONFIG_FILE}}"
+  load_agents_from_config
+
+  if [[ ${#AGENTS[@]} -eq 0 ]]; then
+    AGENTS=("analyzer" "backend-dev" "frontend-dev" "tester" "deployer")
+    [[ -z "$PROJECT_ROOT" ]] && PROJECT_ROOT="/Users/tigerclaw/code/order-system"
+  fi
+
   init_dirs
 
-  local current
-  current=$(get_handoff "current_agent" "")
-  local status
-  status=$(get_handoff "status" "unknown")
-  local round
-  round=$(get_handoff "round" "0")
+  local current status round user_demand
+  current=$(jq_get "current_agent" "")
+  status=$(jq_get "status" "unknown")
+  round=$(jq_get "round" "0")
+  user_demand=$(jq_get "user_demand" "")
 
   [[ "$status" == "completed" ]] && info "工作流已完成" && return 0
   [[ -z "$current" || "$current" == "null" ]] && error "無中斷記錄，請用 start 啟動"
 
   info "=========================================="
-  info "從中斷點繼續 — current_agent: $current"
-  info "round: $round，status: $status"
+  info "從中斷點繼續"
+  info "current_agent: $current (round $round)"
+  info "status: $status"
   info "=========================================="
 
-  local user_demand
-  user_demand=$(get_handoff "user_demand" "")
+  local start_idx=-1
+  for i in "${!AGENTS[@]}"; do
+    if [[ "${AGENTS[$i]}" == "$current" ]]; then
+      start_idx=$i
+      break
+    fi
+  done
 
-  case "$current" in
-    analyzer)
-      cmd_start "$user_demand" ;;
-    backend-dev)
-      info "從 Backend-Dev 繼續（R2 實作）" ;;
-    frontend-dev)
-      info "從 Frontend-Dev 繼續（R3 實作）" ;;
-    tester)
-      info "從 Tester 繼續（R4 測試）" ;;
-    deployer)
-      info "從 Deployer 繼續（R5 部署）" ;;
-    *)
-      error "未知的 current_agent: $current" ;;
-  esac
+  [[ $start_idx -eq -1 ]] && error "current_agent '$current' 不在 agent_list 中"
+
+  for i in "${!AGENTS[@]}"; do
+    if [[ $i -lt $start_idx ]]; then
+      info "略過（已執行）: ${AGENTS[$i]}"
+      continue
+    fi
+
+    local agent="${AGENTS[$i]}"
+    local next="${AGENTS[$((i + 1))]:-}"
+
+    # 跳過已完成的 agent（防重複執行）
+    local completed_list
+    completed_list=$(python3 "$WORKFLOW_DIR/lib/handoff.py" "$ARTIFACTS_DIR" "$HANDOFF" get completed_agent "" 2>/dev/null || echo "[]")
+    if echo "$completed_list" | grep -q "\"$agent\"" 2>/dev/null; then
+      info "略過已完成: $agent"
+      continue
+    fi
+
+    info "========== 繼續 Round $((i+1)): $agent =========="
+
+    local task focus commit_msg
+    task=$(get_agent_prompt "$agent" "$user_demand")
+    focus=$(get_agent_focus "$agent" "$next")
+    commit_msg=$(get_agent_commit "$agent")
+
+    write_handoff $((i+1)) "$agent" "$next" "" "$focus"
+    run_agent "$agent" "$task" "$focus" "$commit_msg" || { warn "Agent $agent 執行失敗"; break; }
+    python3 "$WORKFLOW_DIR/lib/handoff.py" \
+      "$ARTIFACTS_DIR" "$HANDOFF" update \
+      $((i+1)) "$agent" "$next" "" "$focus" "true"
+    workflow_commit "${commit_msg:-chore: $agent 完成}" || warn "Commit 失敗，將繼續"
+    append_log "$agent" "完成（resume）" || true
+  done
+
+  append_log "workflow" "完成（resume）" "從 $current 恢復"
+
+  info "=========================================="
+  info "工作流完成（從 resume 恢復）！"
+  info "=========================================="
 }
 
 #------------------------------------------
 # 查看狀態
 #------------------------------------------
 cmd_status() {
+  load_config "${2:-${CONFIG_FILE}}"
+  load_agents_from_config
+
   init_dirs
   echo ""
   echo "========== 工作流狀態 =========="
   echo ""
-  if [[ -f "$HANDOFF" ]]; then
-    echo "--- handoff.json ---"
-    cat "$HANDOFF"
-    echo ""
+  echo "設定檔: ${CONFIG_FILE}"
+  if [[ -f "$CONFIG_FILE" ]]; then
+    echo "工作流名稱: $(python3 "$WORKFLOW_DIR/lib/query_config.py" "$CONFIG_FILE" name 2>/dev/null || echo "(未設定)")"
   fi
+  echo "PROJECT_ROOT: ${PROJECT_ROOT:-未設定}"
+  echo ""
+  echo "--- handoff.json ---"
+  [[ -f "$HANDOFF" ]] && cat "$HANDOFF"
+  echo ""
+  echo "--- Agent 列表 ---"
+  if [[ ${#AGENTS[@]} -gt 0 ]]; then
+    for a in "${AGENTS[@]}"; do echo "  - $a"; done
+  else
+    echo "  (從 config.yaml 讀取失敗)"
+  fi
+  echo ""
   echo "--- git log (最近 5 筆) ---"
-  cd_project
-  git log --oneline -5 2>/dev/null || echo "(非 git 專案或無 commit)"
+  if [[ -n "$PROJECT_ROOT" ]] && [[ -d "$PROJECT_ROOT" ]]; then
+    (cd "$PROJECT_ROOT" && git log --oneline -5 2>/dev/null) || echo "(非 git 專案或無 commit)"
+  else
+    echo "(PROJECT_ROOT 無效)"
+  fi
   echo ""
   echo "--- completed_agent ---"
-  get_completed | sed 's/^/  /'
+  local completed
+  completed=$(jq -r '.completed_agent // [] | if type == "array" then .[] else empty end' "$HANDOFF" 2>/dev/null)
+  [[ -z "$completed" ]] && echo "  (無)" || echo "$completed" | sed 's/^/  /'
   echo "=============================="
 }
 
@@ -412,11 +510,19 @@ cmd_status() {
 cmd_run() {
   local agent="${1:-}"
   shift
-  init_dirs
+  load_config "${CONFIG_FILE}"
+  load_agents_from_config
+
   [[ -z "$agent" ]] && error "用法: $0 run <agent> [task]"
 
-  cd_project
-  claude --agent "$agent" --print "$*"
+  local task="${*:-}"
+  [[ -z "$task" ]] && task=$(get_agent_prompt "$agent" "$(jq_get "user_demand" "自訂任務")")
+
+  local focus commit_msg
+  focus=$(get_agent_focus "$agent" "")
+  commit_msg=$(get_agent_commit "$agent")
+
+  run_agent "$agent" "$task" "$focus" "$commit_msg"
 }
 
 #------------------------------------------
@@ -430,18 +536,24 @@ case "$COMMAND" in
   resume) cmd_resume "$@" ;;
   status) cmd_status "$@" ;;
   run)    cmd_run "$@" ;;
-  *)      cat << EOF
+  help|--help|-h) cat << 'EOF'
 用法:
-  $0 start  "需求描述"   啟動完整工作流
-  $0 resume                  從中斷點繼續
-  $0 status                  查看狀態
-  $0 run <agent> [task]      執行單一 Agent
-
-可用 Agent: ${AGENTS[*]}
+  ./runner.sh start  "需求描述" [config.yaml]  啟動完整工作流
+  ./runner.sh resume [config.yaml]             從中斷點繼續
+  ./runner.sh status [config.yaml]             查看狀態
+  ./runner.sh run <agent> [task]              執行單一 Agent
 
 範例:
-  $0 start "新增會員點數功能"
-  $0 status
+  ./runner.sh start "新增會員點數功能"
+  ./runner.sh start "新功能" config.myproject.yaml
+  ./runner.sh status
+  ./runner.sh resume
+  ./runner.sh run backend-dev "優化資料庫查詢"
+
+提示:
+  - 複製 config.yaml 為自訂設定檔，客製化 Agent 流程
+  - 或 export PROJECT_ROOT=/path/to/project 覆寫設定
 EOF
       ;;
+  *)      error "未知命令: $COMMAND，執行 '$0 help' 查看幫助" ;;
 esac
