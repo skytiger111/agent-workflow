@@ -222,25 +222,10 @@ run_agent() {
   local rendered_task
   rendered_task=$(render_prompt "$task")
 
-  # bash 3.2 + set -u 會在 heredoc 內展開全域變數時出錯
-  # 改用雙引號 heredoc（不展開變數）再串接
-  local _prompt_body
-  _prompt_body=$(cat <<'TPL'
+  # 組裝完整 prompt（雙引號 heredoc 展開變數）
+  local full_prompt
+  full_prompt=$(cat <<PROMPT
 【工作流囑託】
-上輪囑託:
-
-【你的任務】
-
-【交接提示】
-1. 將產出寫入  對應檔案
-2. 更新 （round、current_agent、next_agent、last_outputs、focus_for_next）
-3. 在  執行 git add + commit
-
-【交接提示（來自 config）】
-TPL
-)
-  local full_prompt="${_prompt_body}"
-  full_prompt="${full_prompt}【工作流囑託】
 上輪囑託: ${focus:-無}
 
 【你的任務】
@@ -253,9 +238,8 @@ ${rendered_task}
 
 【交接提示（來自 config）】
 ${HANDSOFF_FOOTER:-}
-"
-
-  unset _prompt_body
+PROMPT
+)
 
   if command -v claude &>/dev/null; then
     # Python 串流：邊 tail 檔案邊輸出到 stdout（即時送 Flask SSE）
