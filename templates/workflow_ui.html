@@ -242,6 +242,11 @@
   <!-- Wizard -->
   <div class="card" id="wizard-card">
     <div class="card-title">🚀 新需求 Wizard</div>
+    <!-- Config 檔 selector (always visible above wizard) -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <label style="font-size:0.82rem;color:var(--text-dim);white-space:nowrap;">Config 檔</label>
+      <select id="cfg-select" onchange="changeConfig(this.value)" style="max-width:280px;"><option>載入中…</option></select>
+    </div>
 
     <!-- Step indicators -->
     <div id="wizard-steps"></div>
@@ -471,6 +476,11 @@ function toast(msg, type="ok") {
 // ──────────────────────────────────────────────
 // Dashboard: Configs
 // ──────────────────────────────────────────────
+async function changeConfig(name) {
+  await loadConfigByName(name);
+  // Sync wizard demand display if needed
+}
+
 async function loadConfigs() {
   const r = await fetch("/api/configs");
   const list = await r.json();
