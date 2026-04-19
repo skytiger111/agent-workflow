@@ -62,9 +62,9 @@ def list_configs() -> list[dict]:
                 cfg = yaml.safe_load(fh)
             result.append({
                 "name": name,
-                "label": cfg.get("name", name),
-                "version": cfg.get("version", ""),
-                "project_root": cfg.get("project_root", ""),
+                "label": cfg.get("name", name) if cfg else name,
+                "version": cfg.get("version", "") if cfg else "",
+                "project_root": cfg.get("project_root", "") if cfg else "",
             })
         except Exception:
             result.append({"name": name, "label": name, "version": "", "project_root": ""})
@@ -87,13 +87,10 @@ def list_artifacts() -> list[dict]:
     return result
 
 
-def run_workflow_stream(cmd: list[str]):
-    """同步執行 runner.sh，yield 每行輸出"""
+def start_workflow(cmd: list[str]) -> None:
+    """啟動 workflow subprocess（由執行緒呼叫，不讀 output）"""
     global _running_proc
     with _proc_lock:
-        if _running_proc and _running_proc.poll() is None:
-            yield f"data: [ERROR] 已有工作流正在執行\n\n"
-            return
         _running_proc = subprocess.Popen(
             cmd,
             cwd=BASE_DIR,
@@ -102,10 +99,9 @@ def run_workflow_stream(cmd: list[str]):
             text=True,
             bufsize=1,
         )
+    # 等程序結束後解鎖
     proc = _running_proc
     try:
-        for line in proc.stdout:
-            yield f"data: {line}"
         proc.wait()
     finally:
         with _proc_lock:
@@ -196,8 +192,7 @@ def api_start():
     if not demand:
         return jsonify({"error": "請提供需求描述"}), 400
     cmd = [RUNNER, "start", demand, os.path.join(CONFIG_DIR, config)]
-    # 非同步啟動，馬上回應
-    thread = threading.Thread(target=lambda: list(run_workflow_stream(cmd)), daemon=True)
+    thread = threading.Thread(target=start_workflow, args=(cmd,), daemon=True)
     thread.start()
     return jsonify({"ok": True, "started": demand})
 
@@ -207,9 +202,53 @@ def api_resume():
     body = request.json or {}
     config = body.get("config", "config.yaml")
     cmd = [RUNNER, "resume", os.path.join(CONFIG_DIR, config)]
-    thread = threading.Thread(target=lambda: list(run_workflow_stream(cmd)), daemon=True)
+    thread = threading.Thread(target=start_workflow, args=(cmd,), daemon=True)
     thread.start()
     return jsonify({"ok": True})
+
+
+@app.route("/api/pipeline")
+def api_pipeline():
+    """合併 handoff + git log，給 Pipeline Tab 使用"""
+    import glob, subprocess
+
+    handoff = load_handoff()
+    agents_cfg = handoff.get("agent_list", [])
+    completed = handoff.get("completed_agent", [])
+    current = handoff.get("current_agent", "")
+    focus = handoff.get("focus_for_next", "")
+    status = handoff.get("status", "unknown")
+
+    agents = []
+    for name in agents_cfg:
+        if name == current and status == "in_progress":
+            st = "running"
+        elif name in completed:
+            st = "done"
+        else:
+            st = "pending"
+        agent = {"name": name, "status": st}
+        if st == "running":
+            agent["focus"] = focus
+        agents.append(agent)
+
+    # 讀取 git log（最多 10 筆）
+    commits = []
+    root = handoff.get("project_root", "")
+    if root and os.path.exists(root):
+        try:
+            result = subprocess.run(
+                ["git", "log", "--oneline", "-10"],
+                cwd=root, capture_output=True, text=True, timeout=5
+            )
+            for line in result.stdout.strip().split("\n"):
+                if line:
+                    parts = line.split(" ", 1)
+                    commits.append({"hash": parts[0], "msg": parts[1] if len(parts) > 1 else ""})
+        except Exception:
+            pass
+
+    return jsonify({"agents": agents, "commits": commits})
 
 
 @app.route("/api/workflow/run", methods=["POST"])
@@ -221,16 +260,42 @@ def api_run_agent():
     if not agent:
         return jsonify({"error": "請指定 agent"}), 400
     cmd = [RUNNER, "run", agent, task, os.path.join(CONFIG_DIR, config)]
-    thread = threading.Thread(target=lambda: list(run_workflow_stream(cmd)), daemon=True)
+    thread = threading.Thread(target=start_workflow, args=(cmd,), daemon=True)
     thread.start()
     return jsonify({"ok": True, "agent": agent})
 
 
 @app.route("/api/workflow/stream")
 def api_stream():
-    """SSE 串流 runner.sh 輸出"""
+    """SSE 串流 runner.sh 輸出（直接讀 _running_proc 的 stdout）"""
+    def generate():
+        import time
+        # 等候最多 3 秒讓執行緒啟動並寫入 _running_proc
+        for _ in range(30):
+            with _proc_lock:
+                proc = _running_proc
+            if proc is not None:
+                break
+            yield f"data: [connecting]\n\n"
+            time.sleep(0.1)
+
+        while True:
+            with _proc_lock:
+                proc = _running_proc
+            if proc is None or proc.poll() is not None:
+                break
+            try:
+                line = proc.stdout.readline()
+                if line:
+                    yield f"data: {line}"
+                else:
+                    time.sleep(0.05)
+            except Exception:
+                break
+        yield "data: [done]\n\n"
+
     return Response(
-        stream_with_context(run_workflow_stream([])),
+        stream_with_context(generate()),
         mimetype="text/event-stream",
     )
 
