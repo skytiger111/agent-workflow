@@ -258,30 +258,32 @@ ${HANDSOFF_FOOTER:-}
   unset _prompt_body
 
   if command -v claude &>/dev/null; then
-    # 使用 FIFO 將輸出同時送往：(1) stdout 供 SSE 串流 (2) 檔案供 needs_input 偵測
+    # Python 串流：邊 tail 檔案邊輸出到 stdout（即時送 Flask SSE）
     local output_file="${WORKFLOW_DIR}/.agent_output_$$.tmp"
-    local fifo_file="${WORKFLOW_DIR}/.agent_fifo_$$.tmp"
-    mkfifo "$fifo_file"
 
-    # tee：寫入 output_file + 送到 stdout（串流到 Flask pipe）
-    tee "$output_file" < "$fifo_file" &
-    local tee_pid=$!
-
-    # 確保 PROJECT_ROOT 存在，並在該目錄執行 claude --print
+    # 確保 PROJECT_ROOT 存在
     if [[ ! -d "$PROJECT_ROOT" ]]; then
       mkdir -p "$PROJECT_ROOT"
       info "已建立 PROJECT_ROOT: $PROJECT_ROOT"
     fi
 
-    # 在 PROJECT_ROOT 的 subshell 中執行，讓 bash 工具的 cwd 正確
-    # stdout → fifo，这样 Flask 能实时读取并发送给 SSE
+    # 先建立空檔，確保 Python tail 有檔案可讀
+    > "$output_file"
+
+    # 啟動 Python 串流（background，stdout → Flask pipe）
+    python3 "$WORKFLOW_DIR/lib/stream_output.py" "$output_file" &
+    local streamer_pid=$!
+
+    # Agent 寫入 output_file（subshell，隔離 cd）
     (
       cd "$PROJECT_ROOT" || exit 1
       claude --print --agent "$agent_name" "$full_prompt"
-    ) > "$fifo_file" 2>&1 || true
+    ) >> "$output_file" 2>&1 || true
 
-    wait $tee_pid 2>/dev/null || true
-    rm -f "$fifo_file"
+    # 等 Python 讀完尾部
+    sleep 2
+    kill $streamer_pid 2>/dev/null || true
+    wait $streamer_pid 2>/dev/null || true
 
     # 偵測 Agent 是否在等待用戶輸入
     local needs_input=false
@@ -289,13 +291,6 @@ ${HANDSOFF_FOOTER:-}
       needs_input=true
     fi
 
-    # head -50 已由 tee 即時送出，SSE 已有串流
-    # 尾部摘要（若產出超過 50 行）
-    local line_count
-    line_count=$(wc -l < "$output_file" 2>/dev/null || echo 0)
-    if [[ "$line_count" -gt 50 ]]; then
-      echo "...（共 ${line_count} 行，以上為前 50 行）"
-    fi
     rm -f "$output_file"
 
     if [[ "$needs_input" == true ]]; then
