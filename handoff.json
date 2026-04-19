@@ -1,21 +1,13 @@
 {
-  "round": 5,
-  "current_agent": "deployer",
+  "round": 0,
+  "current_agent": "",
   "next_agent": "",
-  "completed_agent": [
-    "analyzer",
-    "backend-dev",
-    "frontend-dev",
-    "tester",
-    "deployer"
-  ],
-  "user_demand": "【全新專案】Market_Sentiment 市場情緒分析工具：爬取鉅亨網新聞 + PTT/Dcard，用 LLM 做情緒分數分析（-1 到 1），Flask API + SQLite，前端即時列表 + 7天/30天趨勢圖",
-  "last_outputs": [
-    ""
-  ],
-  "focus_for_next": "部署：整理程式碼，推送到 GitHub",
-  "timestamp": "2026-04-19T05:51:54Z",
-  "status": "in_progress",
+  "completed_agent": [],
+  "user_demand": "",
+  "last_outputs": [],
+  "focus_for_next": "",
+  "timestamp": "",
+  "status": "idle",
   "agent_list": [
     "analyzer",
     "backend-dev",
@@ -24,11 +16,12 @@
     "deployer"
   ],
   "artifacts": {
-    "spec": "/Users/tigerclaw/claude/skills/agent-workflow/shared-context/artifacts/SPEC.md",
-    "api_contract": "/Users/tigerclaw/claude/skills/agent-workflow/shared-context/artifacts/api-contract.md",
-    "frontend_spec": "/Users/tigerclaw/claude/skills/agent-workflow/shared-context/artifacts/component-spec.md",
-    "test_report": "/Users/tigerclaw/claude/skills/agent-workflow/shared-context/artifacts/test-report.md",
-    "deploy_status": "/Users/tigerclaw/claude/skills/agent-workflow/shared-context/artifacts/deploy-status.md"
+    "spec": "",
+    "api_contract": "",
+    "frontend_spec": "",
+    "test_report": "",
+    "deploy_status": ""
   },
-  "config_file": "config.market-sentiment.yaml"
+  "project_name": "",
+  "config_file": ""
 }

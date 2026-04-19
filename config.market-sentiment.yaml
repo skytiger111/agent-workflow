@@ -1,4 +1,4 @@
-name: config.market-sentiment.yaml
+name: market-sentiment
 version: '1.0'
 project_root: /Users/tigerclaw/code/Market_Sentiment
 git_remote: https://github.com/skytiger111/Market_Sentiment
