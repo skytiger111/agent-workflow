@@ -1,8 +1,8 @@
 ## 更新紀錄
-- 2026-04-19 — fix: Bug 5 — 每專案獨立 log.md（projects/{name}/log.md）；SSE FIFO 串流（mkfifo+tee 即時輸出）；Config Tab auto-sync handoff.config_file
+- 2026-04-19 — fix: heredoc prompt 變數置換錯誤（artifacts_dir/handoff_file/project_root 未解析）；新增 --dangerously-skip-permissions 避免 claude --print 詢問許可；Python stream_output.py 即時串流
+- 2026-04-19 — fix: Bug 5 — 每專案獨立 log.md（projects/{name}/log.md）；Config Tab auto-sync handoff.config_file；Per-project artifacts 驗證正確
 - 2026-04-19 — fix: Bug 7 — resume 現在正確讀取 handoff.json 的 config_file，不再每次都用 config.yaml
 - 2026-04-19 — feat: Market_Sentiment 完整 pipeline 實測完成：analyzer→backend-dev→frontend-dev→tester→deployer 全部 commit 成功
-- 2026-04-19 — feat: Config Tab 新增使用說明與當前設定檔/專案目錄顯示
 - 2026-04-19 — fix: Bug 3 — run_agent() 在 PROJECT_ROOT subshell 執行，確保 Agent 檔案寫入正確目錄；init_dirs/ensure_remote 新增新專案初始化（git init + 初始 commit）
 - 2026-04-19 — fix: Pipeline 三大 bug — status 狀態保護 / completed_agent JSON 解析 / Agent 提問偵測並暫停 pipeline
 - 2026-04-19 — chore: Pipeline Tab 整合驗證完成（Flask 啟動正常、API 回傳正確、UI 渲染正確）
