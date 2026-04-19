@@ -12,7 +12,7 @@ set -euo pipefail
 WORKFLOW_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_FILE="${WORKFLOW_DIR}/config.yaml"
 CONTEXT_DIR="${WORKFLOW_DIR}/shared-context"
-ARTIFACTS_DIR="${CONTEXT_DIR}/artifacts"
+ARTIFACTS_DIR="${WORKFLOW_DIR}/shared-context/artifacts"
 LOG_FILE="${WORKFLOW_DIR}/log.md"
 HANDOFF="${WORKFLOW_DIR}/handoff.json"
 PROJECT_ROOT=""
@@ -83,7 +83,9 @@ print(name)
 " 2>/dev/null || echo "default")
 
     ARTIFACTS_DIR="${WORKFLOW_DIR}/projects/${PROJECT_NAME}/artifacts"
+    LOG_FILE="${WORKFLOW_DIR}/projects/${PROJECT_NAME}/log.md"
     info "Artifacts 目錄: $ARTIFACTS_DIR"
+    info "Log 檔案: $LOG_FILE"
   else
     warn "python3 不可用，無法解析 YAML，請手動設定"
   fi
@@ -256,21 +258,30 @@ ${HANDSOFF_FOOTER:-}
   unset _prompt_body
 
   if command -v claude &>/dev/null; then
-    # 捕獲輸出並偵測是否需要用戶輸入
+    # 使用 FIFO 將輸出同時送往：(1) stdout 供 SSE 串流 (2) 檔案供 needs_input 偵測
     local output_file="${WORKFLOW_DIR}/.agent_output_$$.tmp"
+    local fifo_file="${WORKFLOW_DIR}/.agent_fifo_$$.tmp"
+    mkfifo "$fifo_file"
+
+    # tee：寫入 output_file + 送到 stdout（串流到 Flask pipe）
+    tee "$output_file" < "$fifo_file" &
+    local tee_pid=$!
 
     # 確保 PROJECT_ROOT 存在，並在該目錄執行 claude --print
-    # （claude 的 bash 工具預設 cwd 為流程工作目錄）
     if [[ ! -d "$PROJECT_ROOT" ]]; then
       mkdir -p "$PROJECT_ROOT"
       info "已建立 PROJECT_ROOT: $PROJECT_ROOT"
     fi
 
     # 在 PROJECT_ROOT 的 subshell 中執行，讓 bash 工具的 cwd 正確
+    # stdout → fifo，这样 Flask 能实时读取并发送给 SSE
     (
       cd "$PROJECT_ROOT" || exit 1
       claude --print --agent "$agent_name" "$full_prompt"
-    ) > "$output_file" 2>&1 || true
+    ) > "$fifo_file" 2>&1 || true
+
+    wait $tee_pid 2>/dev/null || true
+    rm -f "$fifo_file"
 
     # 偵測 Agent 是否在等待用戶輸入
     local needs_input=false
@@ -278,10 +289,12 @@ ${HANDSOFF_FOOTER:-}
       needs_input=true
     fi
 
-    # 輸出內容（只顯示前 50 行，避免佔據太多終端）
-    if [[ -s "$output_file" ]]; then
-      head -50 "$output_file"
-      echo "..."
+    # head -50 已由 tee 即時送出，SSE 已有串流
+    # 尾部摘要（若產出超過 50 行）
+    local line_count
+    line_count=$(wc -l < "$output_file" 2>/dev/null || echo 0)
+    if [[ "$line_count" -gt 50 ]]; then
+      echo "...（共 ${line_count} 行，以上為前 50 行）"
     fi
     rm -f "$output_file"
 

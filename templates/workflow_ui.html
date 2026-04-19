@@ -650,8 +650,10 @@ function connectStream() {
       document.getElementById("btn-start").disabled = false;
       document.getElementById("btn-resume").disabled = false;
       refreshStatus();
+      loadPipeline();
       loadArtifacts();
       loadLog();
+      reloadConfig();
       es.close();
       es = null;
       return;
@@ -711,7 +713,23 @@ function escHtml(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replac
 // ──────────────────────────────────────────────
 async function reloadConfig() {
   const sel = document.getElementById("cfg-select");
-  const name = sel ? sel.value : currentConfig;
+  // 優先從 handoff.json 讀取當前 workflow 使用的 config（自動同步 pipeline 啟動後的設定）
+  let name = sel ? sel.value : currentConfig;
+  try {
+    const hr = await fetch("/api/status");
+    if (hr.ok) {
+      const handoff = await hr.json();
+      if (handoff.config_file) {
+        // 從完整路徑取出檔案名
+        const cfgFromHandoff = handoff.config_file.split("/").pop();
+        if (cfgFromHandoff && cfgFromHandoff !== name) {
+          name = cfgFromHandoff;
+          if (sel) sel.value = name;
+        }
+      }
+    }
+  } catch(e) { /* ignore, fall back to dropdown selection */ }
+
   try {
     const r = await fetch(`/api/config/${name}`);
     if (!r.ok) return;
