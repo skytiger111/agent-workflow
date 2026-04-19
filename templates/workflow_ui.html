@@ -168,8 +168,8 @@
     text-align: center; line-height: 1.3;
   }
   .pipe-node:hover { border-color: var(--accent); color: var(--accent); }
-  .pipe-node.done { border-color: var(--accent2); background: rgba(63,185,80,.12); color: var(--accent2); }
-  .pipe-node.running { border-color: var(--warn); background: rgba(210,153,34,.12); color: var(--warn); animation: pipe-pulse 1.6s ease-in-out infinite; }
+  .pipe-node.done { border-color: var(--accent2); background: rgba(63,185,80,.12); color: var(--accent2); opacity: 1; }
+  .pipe-node.running { border-color: var(--warn); background: rgba(210,153,34,.12); color: var(--warn); animation: pipe-pulse 1.6s ease-in-out infinite; opacity: 1; }
   .pipe-node.pending { opacity: .4; }
   .pipe-node.selected { box-shadow: 0 0 0 3px var(--accent); }
   .pipe-node-label { font-family: var(--mono); font-size: .7rem; color: var(--text-dim); text-align: center; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1089,8 +1089,8 @@ function selectAgent(name) {
   const statusLabel = {done:"✓ 完成", running:"▶ 執行中", pending:"○ 待執行", error:"✕ 失敗"};
   document.getElementById("pd-status").textContent = statusLabel[agent.status] || agent.status;
   document.getElementById("pd-round").textContent = ((pipelineData?.agents || []).findIndex(function(a){return a.name===name}) + 1);
-  document.getElementById("pd-focus").textContent = agent.focus || "—";
-  document.getElementById("pipe-selected-name").textContent = agent.name;
+  document.getElementById("pd-focus").textContent = escHtml(agent.focus) || "—";
+  document.getElementById("pipe-selected-name").textContent = escHtml(agent.name);
 
   const artifactsEl = document.getElementById("pd-artifacts");
   artifactsEl.innerHTML = (agent.artifacts || []).map(function(a){return '<span class="tag">' + escHtml(a) + '</span>'}).join("")
