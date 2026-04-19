@@ -10,14 +10,6 @@ COMMAND = sys.argv[3] if len(sys.argv) > 3 else ""
 
 TS = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-ARTIFACTS = {
-    "spec": f"{_artifacts}/SPEC.md",
-    "api_contract": f"{_artifacts}/api-contract.md",
-    "frontend_spec": f"{_artifacts}/component-spec.md",
-    "test_report": f"{_artifacts}/test-report.md",
-    "deploy_status": f"{_artifacts}/deploy-status.md",
-}
-
 def load():
     if os.path.exists(_handoff_path):
         with open(_handoff_path) as f:
@@ -33,12 +25,24 @@ def cmd_init():
     user_demand = sys.argv[4] if len(sys.argv) > 4 else ""
     agents_raw = sys.argv[5] if len(sys.argv) > 5 else "[]"
     config_file = sys.argv[6] if len(sys.argv) > 6 else ""
+    project_name = sys.argv[7] if len(sys.argv) > 7 else "default"
     try:
         agents = json.loads(agents_raw)
     except:
         agents = []
 
     next_agent = agents[0] if agents else "analyzer"
+
+    # 動態計算 artifacts 路徑（與 runner.sh 保持一致）
+    workflow_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    artifacts_base = os.path.join(workflow_dir, "projects", project_name, "artifacts")
+    art_paths = {
+        "spec": f"{artifacts_base}/SPEC.md",
+        "api_contract": f"{artifacts_base}/api-contract.md",
+        "frontend_spec": f"{artifacts_base}/component-spec.md",
+        "test_report": f"{artifacts_base}/test-report.md",
+        "deploy_status": f"{artifacts_base}/deploy-status.md",
+    }
 
     save({
         "round": 0,
@@ -51,10 +55,11 @@ def cmd_init():
         "timestamp": TS,
         "status": "in_progress",
         "agent_list": agents,
-        "artifacts": ARTIFACTS,
+        "artifacts": art_paths,
+        "project_name": project_name,
         "config_file": config_file,
     })
-    print(f"[OK] handoff.json initialized (next: {next_agent}, config: {config_file})")
+    print(f"[OK] handoff.json initialized (next: {next_agent}, config: {config_file}, project: {project_name})")
 
 def cmd_update():
     """更新 handoff：設定當前/下一個 agent"""
@@ -81,7 +86,6 @@ def cmd_update():
         "last_outputs": [outputs],
         "focus_for_next": focus,
         "timestamp": TS,
-        "artifacts": ARTIFACTS,
     })
     save(data)
     print(f"[OK] handoff updated: round={round_n}, agent={agent}, next={next_agent}")
