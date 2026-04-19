@@ -1,4 +1,6 @@
 ## 更新紀錄
+- 2026-04-19 — fix: Bug 3 — run_agent() 在 PROJECT_ROOT subshell 執行，確保 Agent 檔案寫入正確目錄；init_dirs/ensure_remote 新增新專案初始化（git init + 初始 commit）
+- 2026-04-19 — fix: Pipeline 三大 bug — status 狀態保護 / completed_agent JSON 解析 / Agent 提問偵測並暫停 pipeline
 - 2026-04-19 — chore: Pipeline Tab 整合驗證完成（Flask 啟動正常、API 回傳正確、UI 渲染正確）
 - 2026-04-19 — feat: 新增 Pipeline Tab，含節點圖（done/running/pending 三態 + pulse 動畫）、詳情面板、commit 歷史，每 5 秒自動刷新
 - 2026-04-19 — feat: 新增 /api/pipeline 端點含 4 情境 TDD 測試（normal/empty/completed/custom agents）
