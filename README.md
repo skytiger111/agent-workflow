@@ -1,5 +1,5 @@
 ## 更新紀錄
-- 2026-04-19 — fix: Bug 4 — 多專案 artifacts 隔離：runner/handoff/app/UI 全部改用 projects/{name}/artifacts 動態路徑
+- 2026-04-19 — fix: Bug 5 — 每專案獨立 log.md（projects/{name}/log.md）；SSE FIFO 串流（mkfifo+tee 即時輸出）；Config Tab auto-sync handoff.config_file
 - 2026-04-19 — fix: Bug 7 — resume 現在正確讀取 handoff.json 的 config_file，不再每次都用 config.yaml
 - 2026-04-19 — feat: Market_Sentiment 完整 pipeline 實測完成：analyzer→backend-dev→frontend-dev→tester→deployer 全部 commit 成功
 - 2026-04-19 — feat: Config Tab 新增使用說明與當前設定檔/專案目錄顯示

@@ -104,11 +104,15 @@ print('project_root:', cfg.get('project_root', 'MISSING'))
 
 ---
 
-## 🟡 Bug 5：`log.md` 與實際 pipeline 執行時間不符
+## ✅ Bug 5：`log.md` Per-Project 隔離
 
 **現象：** log.md 顯示 `## 2026-04-18 09:09` 完成，但 pipeline 實際是 `## 2026-04-19` 執行。
 
 **根因：** `log.md` 保留了上一個 pipeline（minimax-image-server）的歷史記錄，沒有清除也沒有區分專案。
+
+**修復方案：** `LOG_FILE` 改為 `${WORKFLOW_DIR}/projects/${PROJECT_NAME}/log.md`，與 `ARTIFACTS_DIR` 同結構。
+
+**驗證：** Market_Sentiment pipeline 的 log 現在寫入 `projects/market-sentiment/log.md`。
 
 ---
 
@@ -129,6 +133,6 @@ print('project_root:', cfg.get('project_root', 'MISSING'))
 | P1 | Bug 2：status 永遠 in_progress | ✅ 已修 | 低 |
 | P2 | Bug 1：Agent 提問時 pipeline 卡住 | ✅ 已修 | 中 |
 | P3 | Bug 3：程式碼寫錯目錄 | ✅ 已修 | 中（subshell cd 解決） |
-| P4 | Bug 4：多專案 artifacts 衝突 | 🟡 中 | 中 |
-| P5 | Bug 5：log 專案混淆 | 🟡 低 | 低 |
+| P4 | Bug 4：多專案 artifacts 衝突 | ✅ 已修 | 中 |
+| P5 | Bug 5：log 專案混淆 | ✅ 已修 | 低 |
 | P6 | Bug 6：completed_agent 解析不一致 | ✅ 已修 | 低 |
