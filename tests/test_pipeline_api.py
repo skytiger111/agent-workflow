@@ -180,6 +180,7 @@ def test_pipeline_mixed_status(workflow_app, tmp_path):
         data = rv.get_json()
         for a in data["agents"]:
             assert a["status"] == "pending", f"{a['name']} 應為 pending，實際為 {a['status']}"
+        assert isinstance(data["commits"], list)
     finally:
         _app.HANDOFF = orig
 
