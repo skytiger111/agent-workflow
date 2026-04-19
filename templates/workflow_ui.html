@@ -481,8 +481,7 @@ function toast(msg, type="ok") {
 // Dashboard: Configs
 // ──────────────────────────────────────────────
 async function changeConfig(name) {
-  await loadConfigByName(name);
-  // Sync wizard demand display if needed
+  await reloadConfig();
 }
 
 async function loadConfigs() {
