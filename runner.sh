@@ -70,6 +70,20 @@ with open('$cfg') as f:
 footer = cfg.get('handoff_footer', '')
 print(footer)
 " 2>/dev/null || echo "")
+
+    PROJECT_NAME=$(python3 -c "
+import yaml, sys, os
+with open('$cfg') as f:
+    cfg = yaml.safe_load(f)
+name = cfg.get('name', '')
+if not name:
+    root = cfg.get('project_root', '')
+    name = os.path.basename(os.path.abspath(root)) if root else 'default'
+print(name)
+" 2>/dev/null || echo "default")
+
+    ARTIFACTS_DIR="${WORKFLOW_DIR}/projects/${PROJECT_NAME}/artifacts"
+    info "Artifacts 目錄: $ARTIFACTS_DIR"
   else
     warn "python3 不可用，無法解析 YAML，請手動設定"
   fi
@@ -380,7 +394,7 @@ cmd_start() {
   local agents_json
   agents_json=$(printf '%s\n' "${AGENTS[@]}" | jq -R . | jq -s .)
   python3 "$WORKFLOW_DIR/lib/handoff.py" \
-    "$ARTIFACTS_DIR" "$HANDOFF" init "$user_demand" "$agents_json" "$CONFIG_FILE"
+    "$ARTIFACTS_DIR" "$HANDOFF" init "$user_demand" "$agents_json" "$CONFIG_FILE" "$PROJECT_NAME"
 
   info "=========================================="
   info "工作流啟動"
