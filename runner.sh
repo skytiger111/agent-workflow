@@ -227,8 +227,27 @@ ${HANDSOFF_FOOTER:-}
   unset _prompt_body
 
   if command -v claude &>/dev/null; then
-    # 使用 --agent 讓 subagent 取得專案上下文
-    claude --print --agent "$agent_name" "$full_prompt"
+    # 捕獲輸出並偵測是否需要用戶輸入
+    local output_file="${WORKFLOW_DIR}/.agent_output_$$.tmp"
+    claude --print --agent "$agent_name" "$full_prompt" > "$output_file" 2>&1 || true
+
+    # 偵測 Agent 是否在等待用戶輸入
+    local needs_input=false
+    if grep -qiE "需要你協助|請問|請確認|needs?.your|your.input|請提供以下|請回覆" "$output_file" 2>/dev/null; then
+      needs_input=true
+    fi
+
+    # 輸出內容（只顯示前 50 行，避免佔據太多終端）
+    if [[ -s "$output_file" ]]; then
+      head -50 "$output_file"
+      echo "..."
+    fi
+    rm -f "$output_file"
+
+    if [[ "$needs_input" == true ]]; then
+      # 回傳 exit code 10 表示需要用戶輸入
+      return 10
+    fi
   else
     error "claude CLI 未安裝，無法執行 Agent"
   fi
@@ -356,7 +375,20 @@ cmd_start() {
 
     # 只更新 current/next，不標記完成（成功後才標記）
     write_handoff $((i+1)) "$agent" "$next" "" "$focus"
-    run_agent "$agent" "$task" "$focus" "$commit_msg" || { warn "Agent $agent 執行失敗"; break; }
+    run_agent "$agent" "$task" "$focus" "$commit_msg"
+    local exit_code=$?
+    if [[ $exit_code -eq 10 ]]; then
+      # Agent 需要用戶輸入，pipeline 暫停
+      info "=========================================="
+      info "⚠ Agent $agent 需要用戶輸入，pipeline 暫停"
+      info "請在 UI 回應後執行 ./runner.sh resume 繼續"
+      info "=========================================="
+      append_log "$agent" "需要用戶輸入" "pipeline 暫停，請先回應後執行 resume"
+      break
+    elif [[ $exit_code -ne 0 ]]; then
+      warn "Agent $agent 執行失敗"
+      break
+    fi
     # 執行成功後才標記為完成
     python3 "$WORKFLOW_DIR/lib/handoff.py" \
       "$ARTIFACTS_DIR" "$HANDOFF" update \
@@ -424,10 +456,14 @@ cmd_resume() {
     local agent="${AGENTS[$i]}"
     local next="${AGENTS[$((i + 1))]:-}"
 
-    # 跳過已完成的 agent（防重複執行）
-    local completed_list
-    completed_list=$(python3 "$WORKFLOW_DIR/lib/handoff.py" "$ARTIFACTS_DIR" "$HANDOFF" get completed_agent "" 2>/dev/null || echo "[]")
-    if echo "$completed_list" | grep -q "\"$agent\"" 2>/dev/null; then
+    # 跳過已完成的 agent（防重複執行）- 使用 Python 解析 JSON 陣列
+    if python3 -c "
+import json,sys
+with open('$HANDOFF') as f:
+    h = json.load(f)
+completed = h.get('completed_agent') or []
+sys.exit(0 if '$agent' in completed else 1)
+" 2>/dev/null; then
       info "略過已完成: $agent"
       continue
     fi

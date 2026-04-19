@@ -68,6 +68,9 @@ def cmd_update():
     if mark_done and agent not in completed:
         completed.append(agent)
 
+    # 不覆蓋 status：若已達 completed，維持 completed
+    if data.get("status") != "completed":
+        data["status"] = "in_progress"
     data.update({
         "round": round_n,
         "current_agent": agent,
@@ -76,7 +79,6 @@ def cmd_update():
         "last_outputs": [outputs],
         "focus_for_next": focus,
         "timestamp": TS,
-        "status": "in_progress",
         "artifacts": ARTIFACTS,
     })
     save(data)
