@@ -376,11 +376,11 @@ cmd_start() {
   init_dirs
   ensure_remote
 
-  # 使用 Python 初始化 handoff
+  # 使用 Python 初始化 handoff（順便記錄 config 檔）
   local agents_json
   agents_json=$(printf '%s\n' "${AGENTS[@]}" | jq -R . | jq -s .)
   python3 "$WORKFLOW_DIR/lib/handoff.py" \
-    "$ARTIFACTS_DIR" "$HANDOFF" init "$user_demand" "$agents_json"
+    "$ARTIFACTS_DIR" "$HANDOFF" init "$user_demand" "$agents_json" "$CONFIG_FILE"
 
   info "=========================================="
   info "工作流啟動"
@@ -439,7 +439,11 @@ cmd_start() {
 # 從中斷點繼續
 #------------------------------------------
 cmd_resume() {
-  load_config "${2:-${CONFIG_FILE}}"
+  # 優先從 handoff.json 讀取當初使用的 config 檔
+  local saved_config
+  saved_config=$(jq -r '.config_file // ""' "$HANDOFF" 2>/dev/null || echo "")
+  local cfg_to_load="${2:-${saved_config:-${CONFIG_FILE}}}"
+  load_config "$cfg_to_load"
   load_agents_from_config
 
   if [[ ${#AGENTS[@]} -eq 0 ]]; then

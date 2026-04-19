@@ -368,8 +368,24 @@
 <!-- ═══════════════════════════════════════════ -->
 <div class="panel" id="panel-config">
 
+  <!-- 使用說明 -->
+  <div class="card" style="border-left:3px solid var(--accent);">
+    <div class="card-title">💡 使用方式</div>
+    <div style="font-size:.82rem;line-height:1.7;color:var(--text-dim);font-family:var(--mono);">
+      <p>1. <strong style="color:var(--text);">選擇 Config</strong> — 上方「Config 檔」下拉選單，切换不同工作流設定</p>
+      <p>2. <strong style="color:var(--text);">修改設定</strong> — 修改基本資料（名稱、路徑、Git）或 Agent 流程</p>
+      <p>3. <strong style="color:var(--text);">新增 Agent</strong> — 點「＋ 新增 Agent」，編輯 prompt 模板</p>
+      <p>4. <strong style="color:var(--text);">另存新檔</strong> — 輸入檔名（如 <code>config.myproject.yaml</code>）再點「💾 儲存」</p>
+      <p>5. <strong style="color:var(--text);">啟動工作流</strong> — 切換到「📊 儀表板」，輸入需求描述，點「▶ 啟動工作流」</p>
+    </div>
+  </div>
+
   <div class="card">
     <div class="card-title">基本設定</div>
+    <div style="margin-bottom:12px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:.78rem;font-family:var(--mono);color:var(--text-dim);">
+      編集中：<span id="cfg-current-file" style="color:var(--accent);">—</span>
+      &nbsp;|&nbsp; project_root：<span id="cfg-display-root" style="color:var(--warn);">—</span>
+    </div>
     <div class="row3">
       <div class="form-group"><label>Workflow 名稱</label><input type="text" id="cfg-name"></div>
       <div class="form-group"><label>版本</label><input type="text" id="cfg-version"></div>
@@ -701,6 +717,9 @@ async function reloadConfig() {
     document.getElementById("cfg-branch").value = cfg.git_branch || "";
     document.getElementById("cfg-footer").value = cfg.handoff_footer || "";
     document.getElementById("version-badge").textContent = `v${cfg.version || "?"}`;
+    // 顯示當前 config 檔和專案路徑
+    document.getElementById("cfg-current-file").textContent = name;
+    document.getElementById("cfg-display-root").textContent = cfg.project_root || "未設定";
     agents = cfg.agents || [];
     renderAgents();
   } catch(e) { toast("載入失敗", "err"); }

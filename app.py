@@ -248,7 +248,15 @@ def api_pipeline():
         except Exception:
             pass
 
-    return jsonify({"agents": agents, "commits": commits, "round": handoff.get("round", 0)})
+    return jsonify({
+        "agents": agents,
+        "commits": commits,
+        "round": handoff.get("round", 0),
+        "config_file": handoff.get("config_file", ""),
+        "project_root": handoff.get("project_root", ""),
+        "status": status,
+        "focus": focus,
+    })
 
 
 @app.route("/api/workflow/run", methods=["POST"])

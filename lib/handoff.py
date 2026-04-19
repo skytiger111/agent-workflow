@@ -32,6 +32,7 @@ def cmd_init():
     """初始化一個新的 handoff.json"""
     user_demand = sys.argv[4] if len(sys.argv) > 4 else ""
     agents_raw = sys.argv[5] if len(sys.argv) > 5 else "[]"
+    config_file = sys.argv[6] if len(sys.argv) > 6 else ""
     try:
         agents = json.loads(agents_raw)
     except:
@@ -51,8 +52,9 @@ def cmd_init():
         "status": "in_progress",
         "agent_list": agents,
         "artifacts": ARTIFACTS,
+        "config_file": config_file,
     })
-    print(f"[OK] handoff.json initialized (next: {next_agent})")
+    print(f"[OK] handoff.json initialized (next: {next_agent}, config: {config_file})")
 
 def cmd_update():
     """更新 handoff：設定當前/下一個 agent"""
