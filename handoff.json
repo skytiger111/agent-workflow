@@ -9,13 +9,13 @@
     "tester",
     "deployer"
   ],
-  "user_demand": "【新增功能】【前端】模組：YT封面 描述：支援可拖曳調整文字位置",
+  "user_demand": "【全新專案】Market_Sentiment 市場情緒分析工具：爬取鉅亨網新聞 + PTT/Dcard，用 LLM 做情緒分數分析（-1 到 1），Flask API + SQLite，前端即時列表 + 7天/30天趨勢圖",
   "last_outputs": [
     ""
   ],
-  "focus_for_next": "部署：git push + 更新 README.md 版本說明",
-  "timestamp": "2026-04-18T01:12:27Z",
-  "status": "completed",
+  "focus_for_next": "部署：整理程式碼，推送到 GitHub",
+  "timestamp": "2026-04-19T05:51:54Z",
+  "status": "in_progress",
   "agent_list": [
     "analyzer",
     "backend-dev",
@@ -30,5 +30,5 @@
     "test_report": "/Users/tigerclaw/claude/skills/agent-workflow/shared-context/artifacts/test-report.md",
     "deploy_status": "/Users/tigerclaw/claude/skills/agent-workflow/shared-context/artifacts/deploy-status.md"
   },
-  "completed_at": "2026-04-18T01:12:27Z"
+  "config_file": "config.market-sentiment.yaml"
 }

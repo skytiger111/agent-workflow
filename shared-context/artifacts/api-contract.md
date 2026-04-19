@@ -1,371 +1,327 @@
-# API 合約文件 — MiniMax Multi-Media Server
+# Market_Sentiment API 合約文件
 
 > **版本：** 1.0
-> **建立日期：** 2026-04-17
-> **更新日期：** 2026-04-17
+> **建立日期：** 2026-04-19
+> **更新日期：** 2026-04-19
 > **負責 Agent：** backend-dev
-> **專案：** minimax-image-server
-> **實作狀態：** ✅ 已實作（2026-04-17）
+> **專案：** Market_Sentiment
+> **實作狀態：** 🔧 實作中
 
 ---
 
 ## 實作摘要
 
-本合約實作於 `{project_root}/src/index.ts`，Express + TypeScript 單一入口檔案：
-- ✅ MiniMax image-01 圖片生成 (`/api/generate`)
-- ✅ MiniMax image-01 圖片編輯 (`/api/image2image`) 含 multer 上傳處理
-- ✅ MiniMax speech-2.8-hd 文字轉語音 (`/api/tts`)
-- ✅ MiniMax music-2.5 音樂生成 (`/api/music`)
-- ✅ MiniMax Hailuo-2.3 影片生成 (`/api/video`) 含任務輪詢 (`/api/video/:task_id`)
-- ✅ Session 歷史紀錄（記憶體 Map）
-- ✅ 完整錯誤處理（400/401/403/404/413/415/422/429/500/502/503）
-- ✅ 健康檢查端點 (`/health`)
-- ✅ 嵌入式 HTML UI (`const UI`)
+本合約實作於 `/Users/tigerclaw/code/Market_Sentiment/` 目錄，Python Flask 後端：
+- ✅ 爬蟲模組（crawler/）：鉅亨網、PTT、Dcard
+- ✅ LLM 情緒分析（analyzer/sentiment.py）
+- ✅ Flask REST API（app.py）
+- ✅ SQLite 持久化（database.py）
 
-**MiniMax API Key：** 從環境變數 `MINIMAX_API_KEY` 注入，嚴禁寫入程式碼。
+**LLM API Key：** 從環境變數 `OPENAI_API_KEY` 或 `ANTHROPIC_API_KEY` 注入。
 
 ---
 
-## 1. 圖片生成
+## 1. 爬蟲統一介面
 
-### `POST /api/generate`
+### BaseCrawler 抽象類別
 
-文字 Prompt 生成圖片（Mono-理解 MiniMax image-01）。
+```python
+class BaseCrawler(ABC):
+    @abstractmethod
+    def fetch(self, limit: int = 20) -> List[dict]:
+        """回傳文章列表"""
 
-**Request：**
-```json
-{
-  "prompt": "一隻在森林中奔跑的可愛老虎",
-  "aspect_ratio": "1:1",
-  "resolution": "1024x1024"
-}
+    @property
+    @abstractmethod
+    def source(self) -> str:
+        """回傳來源代碼：'cnyes'、'ptt'、'dcard'"""
 ```
 
-| 欄位 | 型別 | 必填 | 預設 | 說明 |
-|------|------|------|------|------|
-| prompt | string | ✅ | — | 生成提示詞（≤2000 字） |
-| aspect_ratio | string | ❌ | `1:1` | 寬高比：`1:1` / `16:9` / `9:16` / `4:3` |
-| resolution | string | ❌ | `1024x1024` | 解析度 |
+### Article 統一資料格式
 
-**Response `200`：**
-```json
-{
-  "success": true,
-  "task_id": "img_abc123",
-  "image_url": "https://cdn.minimax.io/...",
-  "prompt": "一隻在森林中奔跑的可愛老虎",
-  "created_at": "2026-04-17T12:00:00Z"
-}
-```
-
-**異常 `400`** — Prompt 為空或長度超限
-```json
-{ "error": "Prompt 不能為空" }
-```
-
-**異常 `401`** — 未設定 MINIMAX_API_KEY
-```json
-{ "error": "MINIMAX_API_KEY 未設定" }
-```
-
-**異常 `500`** — MiniMax API 呼叫失敗
-```json
-{ "error": "圖片生成失敗，請稍後再試" }
+```python
+@dataclass
+class Article:
+    url: str           # 文章完整 URL
+    title: str         # 文章標題
+    content: str       # 文章內容（前500-1000字）
+    published_at: str  # 發布時間（ISO 8601）
+    source: str       # 'cnyes' | 'ptt' | 'dcard'
 ```
 
 ---
 
-## 2. 圖片編輯
+## 2. LLM 情緒分析
 
-### `POST /api/image2image`
+### Request 格式（OpenAI）
 
-參考圖上傳 + Prompt → 風格編輯（Mono-理解 MiniMax image-01 i2i 模式）。
+```python
+requests.post("https://api.openai.com/v1/chat/completions", json={
+    "model": "gpt-4o-mini",
+    "messages": [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": USER_PROMPT}
+    ],
+    "temperature": 0.1,
+    "max_tokens": 200
+})
+```
 
-**Request：** `multipart/form-data`
+### System Prompt
 
-| 欄位 | 類型 | 必填 | 說明 |
-|------|------|------|------|
-| image | File | ✅ | 參考圖（PNG/JPG/WebP，最大 10MB） |
-| prompt | string | ✅ | 修改提示詞 |
-| strength | number | ❌ | 風格強度 0.0–1.0（預設 0.7） |
+```
+你是一個專業的金融市場情緒分析師。請根據以下文章內容，判斷其對相關股票/市場的情緒影響。
+回傳嚴謹、客觀的分析結果。
+```
 
-**Response `200`：**
+### User Prompt
+
+```
+文章標題：{title}
+文章內容：{content}
+
+請分析這篇文章對股票市場的情緒影響，並以以下 JSON 格式回覆：
+{
+  "sentiment_score": <浮點數，範圍 -1 到 1，
+    越接近 1 代表強烈正面，越接近 -1 代表強烈負面>,
+  "label": "<字串，positive / neutral / negative>",
+  "reasoning": "<字串，50字以內的簡短分析理由>"
+}
+
+只回覆 JSON，不要包含其他文字。
+```
+
+### Response 解析
+
 ```json
 {
-  "success": true,
-  "task_id": "i2i_xyz789",
-  "image_url": "https://cdn.minimax.io/...",
-  "original_filename": "upload_abc123.png",
-  "created_at": "2026-04-17T12:01:00Z"
+  "sentiment_score": 0.72,
+  "label": "positive",
+  "reasoning": "多數分析師上調目標價，基本面持續看好"
 }
 ```
 
-**異常 `400`** — 未上傳圖片或 Prompt 為空
-```json
-{ "error": "必須上傳參考圖片" }
-```
+### 分數映射規則
 
-**異常 `413`** — 檔案超過 10MB
-```json
-{ "error": "圖片大小不可超過 10MB" }
-```
-
-**異常 `415`** — 不支援格式
-```json
-{ "error": "僅支援 PNG、JPG、WebP 格式" }
-```
+| 分數區間 | Label | 顏色 |
+|----------|-------|------|
+| ≥ 0.6 | positive | 綠色 `#22c55e` |
+| > -0.3 且 < 0.6 | neutral | 灰色 `#9ca3af` |
+| ≤ -0.3 | negative | 紅色 `#ef4444` |
 
 ---
 
-## 3. 文字轉語音
+## 3. Flask API 端點
 
-### `POST /api/tts`
+### 端點總覽
 
-文字 → MiniMax speech-2.8-hd 高清晰度語音合成。
-
-**Request：**
-```json
-{
-  "text": "歡迎使用 MiniMax 多媒體服務，今天天氣真不錯！",
-  "voice": "female_young",
-  "speed": 1.0,
-  "pitch": 0
-}
-```
-
-| 欄位 | 型別 | 必填 | 預設 | 說明 |
-|------|------|------|------|------|
-| text | string | ✅ | — | 文字內容（≤1000 字） |
-| voice | string | ❌ | `female_young` | 聲音角色 |
-| speed | number | ❌ | 1.0 | 速度 0.5–2.0 |
-| pitch | number | ❌ | 0 | 音調 -10 至 10 |
-
-**Response `200`：**
-```json
-{
-  "success": true,
-  "task_id": "tts_def456",
-  "audio_url": "https://cdn.minimax.io/...",
-  "duration_seconds": 5.2,
-  "text": "歡迎使用 MiniMax...",
-  "created_at": "2026-04-17T12:02:00Z"
-}
-```
-
-**異常 `400`** — Text 為空或長度超限
-```json
-{ "error": "文字內容不能為空" }
-```
+| 方法 | 路徑 | 說明 |
+|------|------|------|
+| `GET` | `/api/news` | 最新文章列表（含情緒分數） |
+| `GET` | `/api/trend` | 情緒趨勢（支援 7/30 天） |
+| `GET` | `/api/summary` | 當日摘要統計 |
+| `POST` | `/api/crawl` | 手動觸發爬蟲 |
+| `GET` | `/health` | 健康檢查 |
 
 ---
 
-## 4. 音樂生成
+### GET /api/news
 
-### `POST /api/music`
+**查詢參數：**
 
-文字描述 → MiniMax music-2.5 生成音樂。
+| 參數 | 類型 | 預設值 | 說明 |
+|------|------|--------|------|
+| `source` | string | `all` | 過濾來源：`cnyes`、`ptt`、`dcard`、`all` |
+| `limit` | int | `20` | 回傳筆數（上限 100） |
+| `offset` | int | `0` | 分頁偏移 |
 
-**Request：**
+**成功回應（200）：**
 ```json
 {
-  "prompt": "輕快的夏日流行音樂，BPM 120，有鋼琴和吉他",
-  "duration": 30,
-  "title": "夏日晴天"
-}
-```
-
-| 欄位 | 型別 | 必填 | 預設 | 說明 |
-|------|------|------|------|------|
-| prompt | string | ✅ | — | 音樂描述 |
-| duration | number | ❌ | 30 | 時長（秒，最大 300） |
-| title | string | ❌ | — | 音樂標題 |
-
-**Response `200`：**
-```json
-{
-  "success": true,
-  "task_id": "music_ghi101",
-  "audio_url": "https://cdn.minimax.io/...",
-  "duration_seconds": 30,
-  "title": "夏日晴天",
-  "created_at": "2026-04-17T12:03:00Z"
-}
-```
-
-**異常 `400`** — Prompt 為空
-```json
-{ "error": "音樂描述不能為空" }
-```
-
----
-
-## 5. 影片生成
-
-### `POST /api/video`
-
-文字或圖片 → MiniMax Hailuo-2.3 生成影片。
-
-**Request（文字模式）：**
-```json
-{
-  "prompt": "一隻可愛的貓在沙發上打哈欠",
-  "duration": 5,
-  "resolution": "720p"
-}
-```
-
-**Request（圖片模式）：**
-```json
-{
-  "image_url": "https://example.com/cat.png",
-  "prompt": "貓緩慢地眨眼睛",
-  "duration": 5
-}
-```
-
-| 欄位 | 型別 | 必填 | 預設 | 說明 |
-|------|------|------|------|------|
-| prompt | string | △ | — | 影片描述（文字模式必填） |
-| image_url | string | △ | — | 參考圖 URL（圖片模式必填） |
-| duration | number | ❌ | 5 | 秒數（最大 30） |
-| resolution | string | ❌ | `720p` | 解析度 `720p` / `1080p` |
-
-△ 兩者至少填一，image_url 優先
-
-**Response `200`（同步完成）：**
-```json
-{
-  "success": true,
-  "task_id": "vid_jkl202",
-  "video_url": "https://cdn.minimax.io/...",
-  "status": "completed",
-  "duration_seconds": 5,
-  "created_at": "2026-04-17T12:04:00Z"
-}
-```
-
-**Response `200`（非同步，任務建立）：**
-```json
-{
-  "success": true,
-  "task_id": "vid_jkl202",
-  "status": "pending",
-  "message": "影片生成中，請使用 /api/video/:task_id 查詢進度"
+  "code": 200,
+  "message": "success",
+  "data": {
+    "total": 156,
+    "limit": 20,
+    "offset": 0,
+    "articles": [
+      {
+        "id": 42,
+        "title": "台積電法說會報喜 市場解讀正面",
+        "source": "cnyes",
+        "url": "https://news.cnyes.com/...",
+        "published_at": "2026-04-19T08:30:00Z",
+        "sentiment_score": 0.72,
+        "label": "positive",
+        "reasoning": "法說會優於預期，半導體展望樂觀",
+        "crawled_at": "2026-04-19T09:00:00Z"
+      }
+    ]
+  }
 }
 ```
 
 ---
 
-### `GET /api/video/:task_id`
+### GET /api/trend
 
-查詢影片任務進度。
+**查詢參數：**
 
-**Response `200`：**
+| 參數 | 類型 | 預設值 | 說明 |
+|------|------|--------|------|
+| `days` | int | `7` | 統計區間（7 或 30） |
+
+**成功回應（200）：**
 ```json
 {
-  "task_id": "vid_jkl202",
-  "status": "completed",
-  "video_url": "https://cdn.minimax.io/...",
-  "progress_percent": 100
+  "code": 200,
+  "message": "success",
+  "data": {
+    "days": 7,
+    "trend": [
+      {"date": "2026-04-13", "avg_score": 0.31, "count": 18},
+      {"date": "2026-04-14", "avg_score": -0.12, "count": 22},
+      {"date": "2026-04-15", "avg_score": 0.45, "count": 15},
+      {"date": "2026-04-16", "avg_score": 0.08, "count": 20},
+      {"date": "2026-04-17", "avg_score": 0.55, "count": 19},
+      {"date": "2026-04-18", "avg_score": -0.22, "count": 24},
+      {"date": "2026-04-19", "avg_score": 0.18, "count": 8}
+    ],
+    "overall_avg": 0.175,
+    "overall_count": 126
+  }
 }
-```
-
-**Status 值：** `pending` | `processing` | `completed` | `failed`
-
-**異常 `404`** — 任務 ID 不存在
-```json
-{ "error": "找不到指定的任務" }
 ```
 
 ---
 
-## 6. 歷史與工具
+### GET /api/summary
 
-### `GET /api/history`
-
-取得當前 Session 生成歷史（記憶體 Map 儲存）。
-
-**Response `200`：**
+**成功回應（200）：**
 ```json
 {
-  "items": [
-    {
-      "task_id": "img_abc123",
-      "type": "image",
-      "prompt": "一隻在森林中奔跑的可愛老虎",
-      "result_url": "https://cdn.minimax.io/...",
-      "created_at": "2026-04-17T12:00:00Z"
+  "code": 200,
+  "message": "success",
+  "data": {
+    "date": "2026-04-19",
+    "avg_score": 0.18,
+    "positive_count": 5,
+    "neutral_count": 2,
+    "negative_count": 1,
+    "total_count": 8,
+    "sources": {
+      "cnyes": 3,
+      "ptt": 3,
+      "dcard": 2
     }
-  ],
-  "total": 1
+  }
 }
 ```
 
 ---
 
-### `GET /`
+### POST /api/crawl
 
-回傳嵌入式 HTML UI（`const UI` 變數）。
-
----
-
-### `GET /health`
-
-健康檢查端點。
-
-**Response `200`：**
+**成功回應（202）：**
 ```json
 {
-  "status": "ok",
-  "version": "1.0",
-  "uptime_seconds": 3600
+  "code": 202,
+  "message": "Crawl started",
+  "data": {"crawl_id": "abc123"}
 }
 ```
 
----
-
-## 7. HTTP 狀態碼對照表
-
-| HTTP 狀態碼 | 情境 |
-|-------------|------|
-| `200` | 成功讀取或任務建立（同步完成） |
-| `201` | 非同步任務建立成功（需後續輪詢） |
-| `400` | 請求參數錯誤（Prompt 為空、格式不符、長度超限） |
-| `401` | 未設定 MINIMAX_API_KEY |
-| `403` | API Key 無效或額度不足 |
-| `404` | 資源不存在（影片任務 ID 找不到） |
-| `409` | 資源衝突 |
-| `413` | 圖片上傳超過 10MB |
-| `415` | 不支援的媒體格式（PNG/JPG/WebP 以外的圖片） |
-| `422` | MiniMax API 業務邏輯錯誤（如 Prompt 含敏感詞） |
-| `429` | API 呼叫頻率超限 |
-| `500` | 伺服器內部錯誤（網路問題、MiniMax API 故障） |
-| `502` | MiniMax API Gateway 錯誤 |
-| `503` | MiniMax 服務暫時不可用 |
-
----
-
-## 8. 錯誤回應格式
-
+**錯誤回應（429）：** 爬蟲仍在執行中
 ```json
 {
-  "error": "錯誤描述訊息",
-  "code": "ERROR_CODE",
-  "details": {}
+  "code": 429,
+  "message": "Crawl already in progress",
+  "data": null
 }
 ```
 
 ---
 
-## 9. MiniMax API 型號對照
+### GET /health
 
-| 功能 | API 型號 | MiniMax API 端點 |
-|------|----------|-----------------|
-| 圖片生成 | image-01 | `POST /v1/image generation` |
-| 圖片編輯 | image-01 (i2i) | `POST /v1/image generation` |
-| 文字轉語音 | speech-2.8-hd | `POST /v1/t2a_v2` |
-| 音樂生成 | music-2.5 | `POST /v1/music_generation` |
-| 影片生成 | Hailuo-2.3 | `POST /v1/video_generation` |
+**成功回應（200）：**
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "status": "ok",
+    "db": "connected",
+    "timestamp": "2026-04-19T09:00:00Z"
+  }
+}
+```
+
+---
+
+## 4. 錯誤回應格式
+
+所有錯誤回應均使用以下格式：
+```json
+{
+  "code": <HTTP 狀態碼>,
+  "message": "<人類可讀錯誤訊息>",
+  "data": null
+}
+```
+
+---
+
+## 5. HTTP 狀態碼對照表
+
+| HTTP 狀態碼 | 情境 | 回應 message |
+|------------|------|-------------|
+| 200 | 成功（GET） | `"success"` |
+| 202 | 爬蟲已啟動 | `"Crawl started"` |
+| 400 | 參數錯誤（如 days 非 7/30） | `"Invalid parameter: days must be 7 or 30"` |
+| 404 | 找不到資源 | `"Resource not found"` |
+| 429 | 爬蟲仍在執行中 | `"Crawl already in progress"` |
+| 500 | 資料庫或伺服器錯誤 | `"Internal server error"` |
+| 503 | 外部 API（LLM/爬蟲）無法連線 | `"Service unavailable: unable to reach LLM API"` |
+
+---
+
+## 6. 資料庫 Schema
+
+### Table: articles
+
+```sql
+CREATE TABLE articles (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    title           TEXT    NOT NULL,
+    content         TEXT,
+    url             TEXT    UNIQUE NOT NULL,
+    source          TEXT    NOT NULL CHECK(source IN ('cnyes', 'ptt', 'dcard')),
+    published_at    DATETIME,
+    crawled_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    sentiment_score REAL    DEFAULT 0.0,
+    label           TEXT    DEFAULT 'neutral' CHECK(label IN ('positive', 'neutral', 'negative')),
+    reasoning       TEXT,
+    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_articles_source ON articles(source);
+CREATE INDEX idx_articles_published_at ON articles(published_at);
+CREATE INDEX idx_articles_crawled_at ON articles(crawled_at);
+```
+
+### Table: crawl_logs
+
+```sql
+CREATE TABLE crawl_logs (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    source          TEXT    NOT NULL,
+    started_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    finished_at    DATETIME,
+    article_count   INTEGER DEFAULT 0,
+    status          TEXT    DEFAULT 'running' CHECK(status IN ('running', 'success', 'failed'))
+);
+```
 
 ---
 
