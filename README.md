@@ -1,5 +1,6 @@
 ## 更新紀錄
 - 2026-04-19 — feat: 新增 /api/pipeline 端點含 4 情境 TDD 測試（normal/empty/completed/custom agents）
+- 2026-04-19 — fix: 修補測試覆蓋缺口（mixed_status 情境、commits/round assert、completed_agent 型別保護）
 
 ---
 
