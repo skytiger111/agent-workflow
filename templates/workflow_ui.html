@@ -884,16 +884,16 @@ function renderWizardStep() {
     content = `<div class="wiz-question">${step.question}</div>
     <input type="text" id="wiz-module-input" placeholder="例如：會員模組、訂單服務、購物車"
       value="${escHtml(wizard.answers.module)}"
-      oninput="wizard.answers.module=this.value"
+      oninput="wizard.answers.module=this.value;refreshNextBtn()"
       onkeydown="if(event.key==='Enter')wizardNext()">`;
   } else if (step.id === "detail") {
     content = `<div class="wiz-question">${step.question}</div>
     <textarea id="wiz-detail-input" rows="6" placeholder="盡可能描述清楚：\n- 要達成什麼目標\n- 預期行為是什麼\n- 有哪些既有的程式碼要注意"
-      oninput="wizard.answers.detail=this.value">${escHtml(wizard.answers.detail)}</textarea>`;
+      oninput="wizard.answers.detail=this.value;refreshNextBtn()">${escHtml(wizard.answers.detail)}</textarea>`;
   } else if (step.id === "verify") {
     content = `<div class="wiz-question">${step.question}</div>
     <textarea id="wiz-verify-input" rows="4" placeholder="描述驗收標準，例如：\n- 登入成功後看到歡迎訊息\n- 錯誤時顯示紅色提示\n（略過可直接進入下一步）"
-      oninput="wizard.answers.verify=this.value">${escHtml(wizard.answers.verify)}</textarea>`;
+      oninput="wizard.answers.verify=this.value;refreshNextBtn()">${escHtml(wizard.answers.verify)}</textarea>`;
   } else if (step.id === "confirm") {
     const typeLabel = (WIZ_OPTIONS.type.find(o => o.value === wizard.answers.type) || {}).label || wizard.answers.type;
     const scopeLabel = (WIZ_OPTIONS.scope.find(o => o.value === wizard.answers.scope) || {}).label || wizard.answers.scope;
@@ -930,6 +930,19 @@ function renderWizardStep() {
 function selectRadio(el, key, value) {
   wizard.answers[key] = value;
   renderWizardStep();
+}
+
+// 即時更新 Next 按鈕狀態（不用重渲染整個 step body）
+function refreshNextBtn() {
+  const btn = document.getElementById("wiz-next-btn");
+  if (!btn) return;
+  const step = WIZ_STEPS[wizard.current];
+  const disabled =
+    (step.id === "type"   && !wizard.answers.type)   ||
+    (step.id === "scope"  && !wizard.answers.scope)  ||
+    (step.id === "module" && !wizard.answers.module)  ||
+    (step.id === "detail" && !wizard.answers.detail);
+  btn.disabled = !!disabled;
 }
 
 function wizardNext() {
