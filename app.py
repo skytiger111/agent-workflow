@@ -10,8 +10,23 @@ app.config["JSON_AS_ASCII"] = False
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_DIR = BASE_DIR
 SHARED = os.path.join(BASE_DIR, "shared-context")
-ARTIFACTS_DIR = os.path.join(SHARED, "artifacts")
 HANDOFF = os.path.join(BASE_DIR, "handoff.json")
+
+
+def get_artifacts_dir() -> str:
+    """從 handoff.json 讀取 per-project artifacts 目錄
+    向後相容：若 handoff 無 artifacts 欄位，fallback 回 shared-context/artifacts/"""
+    handoff = load_handoff()
+    artifacts_cfg = handoff.get("artifacts", {})
+    if artifacts_cfg and artifacts_cfg.get("spec"):
+        return os.path.dirname(artifacts_cfg["spec"])
+    # fallback：嘗試從 handoff.project_name 重建路徑
+    project_name = handoff.get("project_name", "default")
+    fallback = os.path.join(BASE_DIR, "projects", project_name, "artifacts")
+    if os.path.exists(fallback):
+        return fallback
+    # 最終 fallback：舊的 shared-context/artifacts/（向後相容）
+    return os.path.join(BASE_DIR, "shared-context", "artifacts")
 LOG_FILE = os.path.join(BASE_DIR, "log.md")
 RUNNER = os.path.join(BASE_DIR, "runner.sh")
 
@@ -73,11 +88,12 @@ def list_configs() -> list[dict]:
 
 def list_artifacts() -> list[dict]:
     """列出 artifacts 目錄下的檔案（不含子目錄內容）"""
-    if not os.path.exists(ARTIFACTS_DIR):
+    artifacts_dir = get_artifacts_dir()
+    if not os.path.exists(artifacts_dir):
         return []
     result = []
-    for f in sorted(os.listdir(ARTIFACTS_DIR)):
-        fp = os.path.join(ARTIFACTS_DIR, f)
+    for f in sorted(os.listdir(artifacts_dir)):
+        fp = os.path.join(artifacts_dir, f)
         if os.path.isfile(fp):
             result.append({
                 "name": f,
@@ -159,7 +175,7 @@ def api_artifacts():
 
 @app.route("/api/artifacts/<path:filename>")
 def api_artifact(filename):
-    path = os.path.join(ARTIFACTS_DIR, filename)
+    path = os.path.join(get_artifacts_dir(), filename)
     if not os.path.isfile(path):
         return jsonify({"error": "檔案不存在"}), 404
     with open(path, encoding="utf-8") as f:
