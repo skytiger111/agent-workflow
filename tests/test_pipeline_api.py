@@ -186,6 +186,46 @@ def test_pipeline_mixed_status(workflow_app, tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# 情境 F: per-project artifacts 隔離
+# ---------------------------------------------------------------------------
+def test_artifacts_per_project(tmp_path):
+    """同一 workflow dir，不同專案有獨立 artifacts"""
+    import app as app_module
+
+    # 建立兩個專案的 artifacts 目錄
+    proj_a = tmp_path / "projects" / "proj-a" / "artifacts"
+    proj_b = tmp_path / "projects" / "proj-b" / "artifacts"
+    proj_a.mkdir(parents=True)
+    proj_b.mkdir(parents=True)
+    (proj_a / "SPEC.md").write_text("SPEC for proj-a", encoding="utf-8")
+    (proj_a / "api-contract.md").write_text("API for proj-a", encoding="utf-8")
+    (proj_b / "SPEC.md").write_text("SPEC for proj-b", encoding="utf-8")
+
+    # handoff 指向 proj-a
+    handoff_path = tmp_path / "handoff.json"
+    handoff_path.write_text(json.dumps({
+        "project_name": "proj-a",
+        "artifacts": {
+            "spec": str(proj_a / "SPEC.md"),
+            "api_contract": str(proj_a / "api-contract.md"),
+        }
+    }), encoding="utf-8")
+
+    orig_handoff = app_module.HANDOFF
+    app_module.HANDOFF = str(handoff_path)
+    try:
+        artifacts = app_module.list_artifacts()
+        names = [a["name"] for a in artifacts]
+        assert "SPEC.md" in names, f"proj-a artifacts should contain SPEC.md, got {names}"
+        assert "api-contract.md" in names
+        # proj-b 不應出現在結果中
+        assert not any("proj-b" in str(a) for a in artifacts), \
+            f"proj-b artifacts should not appear, got {artifacts}"
+    finally:
+        app_module.HANDOFF = orig_handoff
+
+
+# ---------------------------------------------------------------------------
 # pytest fixtures
 # ---------------------------------------------------------------------------
 @pytest.fixture

@@ -317,6 +317,13 @@
 <!-- ═══════════════════════════════════════════ -->
 <div class="panel" id="panel-pipeline">
 
+  <!-- 專案資訊 -->
+  <div class="pipeline-project-info" style="font-size:0.85em;color:#64748b;margin-bottom:8px;">
+    專案：<span id="pipeline-project-name" style="color:#334155;font-weight:600;">—</span>
+    &nbsp;|&nbsp;
+    路徑：<span id="pipeline-project-root" style="color:#334155;font-family:monospace;">—</span>
+  </div>
+
   <!-- 節點圖 -->
   <div class="card">
     <div class="card-title">🔀 Agent Pipeline <span id="pipe-status" style="font-size:.75rem;color:var(--warn);font-weight:normal;"></span></div>
@@ -1048,6 +1055,12 @@ async function loadPipeline() {
 function renderPipeline(data) {
   const track = document.getElementById("pipe-track");
   const agents = data.agents || [];
+
+  // 更新 Pipeline 頁首的專案資訊
+  document.getElementById('pipeline-project-name').textContent = data.project_root
+      ? data.project_root.split('/').pop()
+      : (data.config_file ? data.config_file.replace('config.','').replace('.yaml','') : '—');
+  document.getElementById('pipeline-project-root').textContent = data.project_root || '—';
 
   if (!agents.length) {
     track.innerHTML = '<div style="color:var(--text-dim);font-size:.85rem;padding:16px;">尚無 Pipeline 資料，請先啟動工作流</div>';
