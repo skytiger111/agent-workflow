@@ -19,6 +19,10 @@ def make_handoff(tmp_dir, data):
 # ---------------------------------------------------------------------------
 def test_pipeline_normal(workflow_app, tmp_path):
     """有 completed_agent 和 current_agent 時，回傳正確的 agents 列表"""
+    artifact_dir = tmp_path / "artifacts"
+    artifact_dir.mkdir()
+    (artifact_dir / "SPEC.md").write_text("# SPEC", encoding="utf-8")
+
     handoff_data = {
         "round": 3,
         "current_agent": "frontend-dev",
@@ -26,18 +30,16 @@ def test_pipeline_normal(workflow_app, tmp_path):
         "agent_list": ["analyzer", "backend-dev", "frontend-dev", "tester", "deployer"],
         "focus_for_next": "依據 API 合約實作前端 UI",
         "status": "in_progress",
+        "project_name": "test-project",
+        "artifacts": {
+            "spec": str(artifact_dir / "SPEC.md"),
+        },
     }
     hp = make_handoff(tmp_path, handoff_data)
 
-    artifact_dir = tmp_path / "artifacts"
-    artifact_dir.mkdir()
-    (artifact_dir / "SPEC.md").write_text("# SPEC", encoding="utf-8")
-
     import app as _app
     orig_handoff = _app.HANDOFF
-    orig_artifacts = _app.ARTIFACTS_DIR
     _app.HANDOFF = hp
-    _app.ARTIFACTS_DIR = str(artifact_dir)
 
     try:
         client = workflow_app.test_client()
@@ -68,7 +70,6 @@ def test_pipeline_normal(workflow_app, tmp_path):
         assert isinstance(data["commits"], list)
     finally:
         _app.HANDOFF = orig_handoff
-        _app.ARTIFACTS_DIR = orig_artifacts
 
 
 # ---------------------------------------------------------------------------
