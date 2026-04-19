@@ -26,6 +26,8 @@ def cmd_init():
     agents_raw = sys.argv[5] if len(sys.argv) > 5 else "[]"
     config_file = sys.argv[6] if len(sys.argv) > 6 else ""
     project_name = sys.argv[7] if len(sys.argv) > 7 else "default"
+    project_root = sys.argv[8] if len(sys.argv) > 8 else ""
+    git_remote = sys.argv[9] if len(sys.argv) > 9 else ""
     try:
         agents = json.loads(agents_raw)
     except:
@@ -57,6 +59,8 @@ def cmd_init():
         "agent_list": agents,
         "artifacts": art_paths,
         "project_name": project_name,
+        "project_root": project_root,
+        "git_remote": git_remote,
         "config_file": config_file,
     })
     print(f"[OK] handoff.json initialized (next: {next_agent}, config: {config_file}, project: {project_name})")
@@ -86,6 +90,11 @@ def cmd_update():
         "last_outputs": [outputs],
         "focus_for_next": focus,
         "timestamp": TS,
+        # 保留 init 時寫入的專案資訊
+        "project_name": data.get("project_name", ""),
+        "project_root": data.get("project_root", ""),
+        "git_remote": data.get("git_remote", ""),
+        "config_file": data.get("config_file", ""),
     })
     save(data)
     print(f"[OK] handoff updated: round={round_n}, agent={agent}, next={next_agent}")

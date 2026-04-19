@@ -384,7 +384,7 @@ cmd_start() {
   local agents_json
   agents_json=$(printf '%s\n' "${AGENTS[@]}" | jq -R . | jq -s .)
   python3 "$WORKFLOW_DIR/lib/handoff.py" \
-    "$ARTIFACTS_DIR" "$HANDOFF" init "$user_demand" "$agents_json" "$CONFIG_FILE" "$PROJECT_NAME"
+    "$ARTIFACTS_DIR" "$HANDOFF" init "$user_demand" "$agents_json" "$CONFIG_FILE" "$PROJECT_NAME" "$PROJECT_ROOT" "$GIT_REMOTE"
 
   info "=========================================="
   info "工作流啟動"

@@ -240,6 +240,15 @@ def api_pipeline():
     status = handoff.get("status", "unknown")
 
     agents = []
+    art_map = handoff.get("artifacts", {})
+    # 對應關係：handoff artifacts key → agent name
+    art_to_agent = {
+        "spec": "analyzer",
+        "api_contract": "backend-dev",
+        "frontend_spec": "frontend-dev",
+        "test_report": "tester",
+        "deploy_status": "deployer",
+    }
     for name in agents_cfg:
         if name == current and status == "in_progress":
             st = "running"
@@ -247,7 +256,9 @@ def api_pipeline():
             st = "done"
         else:
             st = "pending"
-        agent = {"name": name, "status": st}
+        # 收集對應的 artifact 檔名
+        agent_artifacts = [v.split("/")[-1] for k, v in art_map.items() if art_to_agent.get(k) == name]
+        agent = {"name": name, "status": st, "artifacts": agent_artifacts}
         if st == "running":
             agent["focus"] = focus
         agents.append(agent)
@@ -299,14 +310,22 @@ def api_stream():
     def generate():
         import time
         # 等候最多 3 秒讓執行緒啟動並寫入 _running_proc
+        found = False
         for _ in range(30):
             with _proc_lock:
                 proc = _running_proc
             if proc is not None:
+                found = True
                 break
             yield f"data: [connecting]\n\n"
             time.sleep(0.1)
 
+        if not found:
+            # workflow 閒置中，直接結束
+            yield "data: [done]\n\n"
+            return
+
+        # 讀取 subprocess 輸出直到結束
         while True:
             with _proc_lock:
                 proc = _running_proc
