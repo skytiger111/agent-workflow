@@ -243,9 +243,13 @@
   <div class="card" id="wizard-card">
     <div class="card-title">🚀 新需求 Wizard</div>
     <!-- Config 檔 selector (always visible above wizard) -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
       <label style="font-size:0.82rem;color:var(--text-dim);white-space:nowrap;">Config 檔</label>
       <select id="cfg-select" onchange="changeConfig(this.value)" style="max-width:280px;"><option>載入中…</option></select>
+      <!-- Workflow controls (shown when workflow is running) -->
+      <span id="proc-status" style="font-size:0.8rem;color:var(--text-dim);margin-left:4px;"></span>
+      <button class="btn" id="btn-stop" onclick="stopWorkflow()" style="display:none;color:var(--danger);border-color:var(--danger);font-size:0.78rem;">■ 停止</button>
+      <button class="btn" id="btn-resume" onclick="resumeWorkflow()" style="display:none;font-size:0.78rem;">⏸ 繼續</button>
     </div>
 
     <!-- Step indicators -->
@@ -639,10 +643,11 @@ async function runSingle() {
 }
 
 async function stopWorkflow() {
-  // Runner.sh 不支援直接 kill，這裡只停 SSE
   disconnectStream();
   document.getElementById("btn-start").disabled = false;
   document.getElementById("btn-resume").disabled = false;
+  document.getElementById("btn-stop").style.display = "none";
+  document.getElementById("proc-status").textContent = "○ 已停止";
   appendTerm("warn", "\n⚠ 停止監聽（process 可能仍在執行）\n");
 }
 
@@ -651,6 +656,7 @@ function connectStream() {
   es = new EventSource("/api/workflow/stream");
   let reconnectAttempts = 0;
   document.getElementById("proc-status").textContent = "● 執行中…";
+  document.getElementById("btn-stop").style.display = "";
   es.onmessage = e => {
     const line = e.data;
     // 跳過連線中提示
@@ -659,6 +665,7 @@ function connectStream() {
       document.getElementById("proc-status").textContent = "○ 已結束";
       document.getElementById("btn-start").disabled = false;
       document.getElementById("btn-resume").disabled = false;
+      document.getElementById("btn-stop").style.display = "none";
       refreshStatus();
       loadPipeline();
       loadArtifacts();
@@ -681,6 +688,7 @@ function connectStream() {
       document.getElementById("proc-status").textContent = "○ 已結束";
       document.getElementById("btn-start").disabled = false;
       document.getElementById("btn-resume").disabled = false;
+      document.getElementById("btn-stop").style.display = "none";
       es.close();
       es = null;
       refreshStatus();
@@ -1019,6 +1027,7 @@ startWorkflow = function() {
 async function startWorkflowFromDemand(demand, config) {
   document.getElementById("btn-start").disabled = true;
   document.getElementById("btn-resume").disabled = true;
+  document.getElementById("btn-stop").style.display = "";
   clearTerminal();
   appendTerm("info", `▶ 啟動工作流：${demand.slice(0, 80)}…\n`);
   appendTerm("", "─".repeat(50) + "\n");
