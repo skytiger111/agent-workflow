@@ -119,6 +119,81 @@
   .mt16 { margin-top: 16px; }
   .mb8 { margin-bottom: 8px; }
   .text-dim { color: var(--text-dim); font-size: 0.8rem; }
+
+  /* ── Wizard ── */
+  #wizard-steps { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
+  .wiz-step { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; position: relative; }
+  .wiz-step:not(:last-child)::after { content: ""; position: absolute; top: 16px; left: 60%; width: 80%; height: 2px; background: var(--border); }
+  .wiz-step.done:not(:last-child)::after { background: var(--accent2); }
+  .wiz-num { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-family: var(--mono); color: var(--text-dim); background: var(--surface); transition: all .2s; }
+  .wiz-step.active .wiz-num { border-color: var(--accent); color: var(--accent); background: rgba(88,166,255,.15); }
+  .wiz-step.done .wiz-num { border-color: var(--accent2); background: rgba(63,185,80,.2); color: var(--accent2); }
+  .wiz-label { font-size: 0.72rem; color: var(--text-dim); font-family: var(--mono); white-space: nowrap; }
+  .wiz-step.active .wiz-label { color: var(--accent); }
+  .wiz-step.done .wiz-label { color: var(--accent2); }
+  #wizard-body { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 28px; margin-bottom: 20px; min-height: 200px; }
+  #wizard-body h3 { font-size: 1.1rem; margin-bottom: 6px; color: var(--text); }
+  #wizard-body p { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 20px; }
+  .wiz-question { font-size: 0.95rem; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+  .wiz-radio-group { display: flex; flex-direction: column; gap: 10px; }
+  .wiz-radio { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all .15s; font-size: 0.9rem; }
+  .wiz-radio:hover { border-color: var(--accent); background: rgba(88,166,255,.08); }
+  .wiz-radio input[type="radio"] { accent-color: var(--accent); width: 16px; height: 16px; flex-shrink: 0; }
+  .wiz-radio.selected { border-color: var(--accent); background: rgba(88,166,255,.15); color: var(--accent); }
+  #wizard-nav { display: flex; justify-content: space-between; margin-top: 20px; }
+  #wizard-summary { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; font-size: 0.85rem; font-family: var(--mono); line-height: 1.8; }
+  #wizard-summary .sum-row { display: flex; gap: 8px; }
+  #wizard-summary .sum-key { color: var(--text-dim); min-width: 90px; }
+  #wizard-summary .sum-val { color: var(--text); }
+
+  /* ── Pipeline Tab ── */
+  #panel-pipeline .pipe-track {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    overflow-x: auto;
+    padding: 8px 4px;
+  }
+
+  .pipe-node-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
+  .pipe-node {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: .7rem;
+    color: var(--text-dim); cursor: pointer;
+    transition: all .25s;
+    text-align: center; line-height: 1.3;
+  }
+  .pipe-node:hover { border-color: var(--accent); color: var(--accent); }
+  .pipe-node.done { border-color: var(--accent2); background: rgba(63,185,80,.12); color: var(--accent2); }
+  .pipe-node.running { border-color: var(--warn); background: rgba(210,153,34,.12); color: var(--warn); animation: pipe-pulse 1.6s ease-in-out infinite; }
+  .pipe-node.pending { opacity: .4; }
+  .pipe-node.selected { box-shadow: 0 0 0 3px var(--accent); }
+  .pipe-node-label { font-family: var(--mono); font-size: .7rem; color: var(--text-dim); text-align: center; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pipe-node-label.done { color: var(--accent2); }
+  .pipe-node-label.running { color: var(--warn); }
+  .pipe-connector { flex: 0 0 32px; height: 2px; background: var(--border); align-self: flex-start; margin-top: 38px; }
+  .pipe-connector.done { background: var(--accent2); }
+
+  @keyframes pipe-pulse {
+    0%,100% { box-shadow: 0 0 6px rgba(210,153,34,.3); }
+    50%      { box-shadow: 0 0 16px rgba(210,153,34,.65); }
+  }
+
+  /* 詳情面板 */
+  .pipe-detail-row { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: .82rem; }
+  .pipe-detail-row:last-child { border-bottom: none; }
+  .pipe-detail-label { font-family: var(--mono); color: var(--text-dim); min-width: 70px; flex-shrink: 0; }
+  .pipe-detail-value { font-family: var(--mono); color: var(--text); }
+
+  /* Commit 列表 */
+  .pipe-commit { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: .8rem; }
+  .pipe-commit:last-child { border-bottom: none; }
+  .pipe-commit-hash { font-family: var(--mono); color: var(--accent); min-width: 60px; flex-shrink: 0; }
+  .pipe-commit-msg { font-family: var(--mono); color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -137,6 +212,7 @@
 <div class="tabs">
   <div class="tab active" data-tab="dashboard">📊 儀表板</div>
   <div class="tab" data-tab="config">⚙️ 設定</div>
+  <div class="tab" data-tab="pipeline">🔀 Pipeline</div>
 </div>
 
 <!-- ═══════════════════════════════════════════ -->
@@ -163,9 +239,23 @@
     </div>
   </div>
 
-  <!-- Actions -->
-  <div class="card">
-    <div class="card-title">🚀 操作</div>
+  <!-- Wizard -->
+  <div class="card" id="wizard-card">
+    <div class="card-title">🚀 新需求 Wizard</div>
+
+    <!-- Step indicators -->
+    <div id="wizard-steps"></div>
+
+    <!-- Step body -->
+    <div id="wizard-body"></div>
+
+    <!-- Navigation -->
+    <div id="wizard-nav"></div>
+  </div>
+
+  <!-- Legacy manual input (hidden when wizard active) -->
+  <div class="card" id="manual-card" style="display:none;">
+    <div class="card-title">📝 手動輸入</div>
     <div class="action-row">
       <div class="form-group">
         <label>Config 檔</label>
@@ -219,6 +309,57 @@
   <div class="card">
     <div class="card-title">📝 Log</div>
     <pre id="log-content" style="font-size:0.78rem;font-family:var(--mono);line-height:1.7;max-height:300px;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;color:var(--text-dim);">載入中…</pre>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- PANEL 3: Pipeline -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="panel" id="panel-pipeline">
+
+  <!-- 節點圖 -->
+  <div class="card">
+    <div class="card-title">🔀 Agent Pipeline <span id="pipe-status" style="font-size:.75rem;color:var(--warn);font-weight:normal;"></span></div>
+    <div class="pipe-track" id="pipe-track">
+      <div style="color:var(--text-dim);font-size:.85rem;padding:16px;">載入中…</div>
+    </div>
+  </div>
+
+  <!-- 詳情 + Commit 歷史 -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+
+    <!-- 左：詳情面板 -->
+    <div class="card">
+      <div class="card-title">📌 Agent 詳情 <span id="pipe-selected-name" style="color:var(--accent);"></span></div>
+      <div id="pipe-detail-empty" style="color:var(--text-dim);font-size:.85rem;padding:12px;">點選上方節點查看詳情</div>
+      <div id="pipe-detail" style="display:none;">
+        <div class="pipe-detail-row">
+          <span class="pipe-detail-label">狀態</span>
+          <span class="pipe-detail-value" id="pd-status">—</span>
+        </div>
+        <div class="pipe-detail-row">
+          <span class="pipe-detail-label">Round</span>
+          <span class="pipe-detail-value" id="pd-round">—</span>
+        </div>
+        <div class="pipe-detail-row">
+          <span class="pipe-detail-label">Focus</span>
+          <span class="pipe-detail-value" id="pd-focus">—</span>
+        </div>
+        <div class="pipe-detail-row">
+          <span class="pipe-detail-label">Artifacts</span>
+          <div id="pd-artifacts" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右：Commit 歷史 -->
+    <div class="card">
+      <div class="card-title">📋 Commit 歷史</div>
+      <div id="pipe-commits">
+        <div style="color:var(--text-dim);font-size:.85rem;padding:12px;">無記錄</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -284,22 +425,12 @@ let currentConfig = "config.yaml";
 let agents = [];
 let es = null;  // EventSource for SSE
 
-// ──────────────────────────────────────────────
-// Init
-// ──────────────────────────────────────────────
-document.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => switchTab(t.dataset.tab)));
-  loadConfigs();
-  refreshStatus();
-  loadArtifacts();
-  loadLog();
-  setInterval(refreshStatus, 5000);
-});
-
 function switchTab(name) {
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
   document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === `panel-${name}`));
   if (name === "config") reloadConfig();
+  if (name === "pipeline") { startPipeRefresh(); loadPipeline(); }
+  else { stopPipeRefresh(); }
 }
 
 // ──────────────────────────────────────────────
@@ -485,23 +616,43 @@ async function stopWorkflow() {
 function connectStream() {
   disconnectStream();
   es = new EventSource("/api/workflow/stream");
+  let reconnectAttempts = 0;
   document.getElementById("proc-status").textContent = "● 執行中…";
   es.onmessage = e => {
     const line = e.data;
+    // 跳過連線中提示
+    if (line === "data: [connecting]") return;
+    if (line === "data: [done]") {
+      document.getElementById("proc-status").textContent = "○ 已結束";
+      document.getElementById("btn-start").disabled = false;
+      document.getElementById("btn-resume").disabled = false;
+      refreshStatus();
+      loadArtifacts();
+      loadLog();
+      es.close();
+      es = null;
+      return;
+    }
+    reconnectAttempts = 0;
     if (line.startsWith("[ERROR]")) { appendTerm("err", line); }
     else if (line.startsWith("[INFO]")) { appendTerm("info", line + "\n"); }
     else if (line.startsWith("[WARN]")) { appendTerm("warn", line + "\n"); }
     else { appendTerm("", line); }
   };
   es.onerror = () => {
-    document.getElementById("proc-status").textContent = "○ 已結束";
-    document.getElementById("btn-start").disabled = false;
-    document.getElementById("btn-resume").disabled = false;
-    refreshStatus();
-    loadArtifacts();
-    loadLog();
-    es.close();
-    es = null;
+    reconnectAttempts++;
+    if (reconnectAttempts >= 3) {
+      appendTerm("warn", "\n⚠ SSE 連線中斷，已嘗試重連\n");
+      document.getElementById("proc-status").textContent = "○ 已結束";
+      document.getElementById("btn-start").disabled = false;
+      document.getElementById("btn-resume").disabled = false;
+      es.close();
+      es = null;
+      refreshStatus();
+    } else {
+      appendTerm("warn", `\n⚠ 連線中斷，嘗試重連 (${reconnectAttempts}/3)…\n`);
+      setTimeout(connectStream, 1000);
+    }
   };
 }
 
@@ -612,6 +763,218 @@ function moveAgent(i, dir) {
   renderAgents();
 }
 
+// ──────────────────────────────────────────────
+// Wizard
+// ──────────────────────────────────────────────
+const WIZ_STEPS = [
+  { id: "type",     label: "類型",     question: "這次要處理什麼類型的工作？" },
+  { id: "scope",    label: "範圍",     question: "影響的範圍是什麼？" },
+  { id: "module",   label: "模組",     question: "目標模組是哪一個？" },
+  { id: "detail",   label: "描述",     question: "詳細描述這個需求" },
+  { id: "verify",   label: "驗收",     question: "如何驗證這個功能成功？（可略過）" },
+  { id: "confirm",  label: "確認",     question: "確認後啟動 Analyzer" },
+];
+
+const WIZ_OPTIONS = {
+  type: [
+    { value: "new-feature",    label: "🆕 新增功能",     desc: "新頁面、新 API、新模組" },
+    { value: "fix-bug",         label: "🐛 修復 Bug",    desc: "修正既有功能的錯誤行為" },
+    { value: "refactor",         label: "♻️ 重構",         desc: "改善程式碼結構，不改功能" },
+    { value: "api-change",      label: "🔌 API 變更",     desc: "新增、修改或刪除 API 端點" },
+  ],
+  scope: [
+    { value: "frontend",  label: "🖥️ 前端",    desc: "HTML / CSS / JS / UI 元件" },
+    { value: "backend",   label: "⚙️ 後端",     desc: "API / 資料庫 / 商業邏輯" },
+    { value: "fullstack", label: "🌐 全端",     desc: "前後端都需要變更" },
+    { value: "infra",     label: "🏗️ 基礎架構",  desc: "部署、CI/CD、設定檔" },
+  ],
+};
+
+const wizard = {
+  current: 0,
+  answers: { type: "", scope: "", module: "", detail: "", verify: "" },
+};
+
+function initWizard() {
+  renderWizardSteps();
+  renderWizardStep();
+}
+
+function renderWizardSteps() {
+  const el = document.getElementById("wizard-steps");
+  el.innerHTML = WIZ_STEPS.map((s, i) => `
+    <div class="wiz-step${i < wizard.current ? " done" : i === wizard.current ? " active" : ""}" id="ws-${i}">
+      <div class="wiz-num">${i < wizard.current ? "✓" : i + 1}</div>
+      <div class="wiz-label">${s.label}</div>
+    </div>`).join("");
+}
+
+function renderWizardStep() {
+  const step = WIZ_STEPS[wizard.current];
+  const body = document.getElementById("wizard-body");
+  const nav = document.getElementById("wizard-nav");
+
+  renderWizardSteps();
+
+  let content = "";
+
+  if (step.id === "type") {
+    content = `<div class="wiz-question">${step.question}</div>
+    <div class="wiz-radio-group">
+      ${WIZ_OPTIONS.type.map(o => `
+        <label class="wiz-radio${wizard.answers.type === o.value ? " selected" : ""}" onclick="selectRadio(this,'type','${o.value}')">
+          <input type="radio" name="wiz-type" value="${o.value}" ${wizard.answers.type === o.value ? "checked" : ""}>
+          <div><strong>${o.label}</strong><div style="font-size:0.78rem;color:var(--text-dim);margin-top:2px;">${o.desc}</div></div>
+        </label>`).join("")}
+    </div>`;
+  } else if (step.id === "scope") {
+    content = `<div class="wiz-question">${step.question}</div>
+    <div class="wiz-radio-group">
+      ${WIZ_OPTIONS.scope.map(o => `
+        <label class="wiz-radio${wizard.answers.scope === o.value ? " selected" : ""}" onclick="selectRadio(this,'scope','${o.value}')">
+          <input type="radio" name="wiz-scope" value="${o.value}" ${wizard.answers.scope === o.value ? "checked" : ""}>
+          <div><strong>${o.label}</strong><div style="font-size:0.78rem;color:var(--text-dim);margin-top:2px;">${o.desc}</div></div>
+        </label>`).join("")}
+    </div>`;
+  } else if (step.id === "module") {
+    content = `<div class="wiz-question">${step.question}</div>
+    <input type="text" id="wiz-module-input" placeholder="例如：會員模組、訂單服務、購物車"
+      value="${escHtml(wizard.answers.module)}"
+      oninput="wizard.answers.module=this.value"
+      onkeydown="if(event.key==='Enter')wizardNext()">`;
+  } else if (step.id === "detail") {
+    content = `<div class="wiz-question">${step.question}</div>
+    <textarea id="wiz-detail-input" rows="6" placeholder="盡可能描述清楚：\n- 要達成什麼目標\n- 預期行為是什麼\n- 有哪些既有的程式碼要注意"
+      oninput="wizard.answers.detail=this.value">${escHtml(wizard.answers.detail)}</textarea>`;
+  } else if (step.id === "verify") {
+    content = `<div class="wiz-question">${step.question}</div>
+    <textarea id="wiz-verify-input" rows="4" placeholder="描述驗收標準，例如：\n- 登入成功後看到歡迎訊息\n- 錯誤時顯示紅色提示\n（略過可直接進入下一步）"
+      oninput="wizard.answers.verify=this.value">${escHtml(wizard.answers.verify)}</textarea>`;
+  } else if (step.id === "confirm") {
+    const typeLabel = (WIZ_OPTIONS.type.find(o => o.value === wizard.answers.type) || {}).label || wizard.answers.type;
+    const scopeLabel = (WIZ_OPTIONS.scope.find(o => o.value === wizard.answers.scope) || {}).label || wizard.answers.scope;
+    content = `<div class="wiz-question">📋 需求摘要</div>
+    <div id="wizard-summary">
+      <div class="sum-row"><span class="sum-key">類型</span><span class="sum-val">${typeLabel}</span></div>
+      <div class="sum-row"><span class="sum-key">範圍</span><span class="sum-val">${scopeLabel}</span></div>
+      <div class="sum-row"><span class="sum-key">模組</span><span class="sum-val">${wizard.answers.module || "（未填）"}</span></div>
+      <div class="sum-row"><span class="sum-key">描述</span><span class="sum-val">${wizard.answers.detail || "（未填）"}</span></div>
+      ${wizard.answers.verify ? `<div class="sum-row"><span class="sum-key">驗收標準</span><span class="sum-val">${wizard.answers.verify}</span></div>` : ""}
+    </div>`;
+  }
+
+  body.innerHTML = content;
+
+  // Nav buttons
+  const prev = wizard.current > 0
+    ? `<button class="btn" onclick="wizardPrev()">← 上一步</button>` : "";
+  const isLast = wizard.current === WIZ_STEPS.length - 1;
+  const nextLabel = isLast ? "▶ 啟動 Analyzer" : "下一步 →";
+  const nextDisabled = (step.id === "type" && !wizard.answers.type) ||
+                       (step.id === "scope" && !wizard.answers.scope) ||
+                       (step.id === "module" && !wizard.answers.module) ||
+                       (step.id === "detail" && !wizard.answers.detail)
+                     ? " disabled" : "";
+  nav.innerHTML = `
+    <div style="flex:1;">
+      <button class="btn" onclick="resetWizard()" style="font-size:0.78rem;">🔄 重新開始</button>
+    </div>
+    ${prev}
+    <button class="btn btn-primary" id="wiz-next-btn" onclick="wizardNext()"${nextDisabled}>${nextLabel}</button>`;
+}
+
+function selectRadio(el, key, value) {
+  wizard.answers[key] = value;
+  renderWizardStep();
+}
+
+function wizardNext() {
+  const step = WIZ_STEPS[wizard.current];
+  if (step.id === "module") wizard.answers.module = document.getElementById("wiz-module-input").value;
+  if (step.id === "detail") wizard.answers.detail = document.getElementById("wiz-detail-input").value;
+  if (step.id === "verify") wizard.answers.verify = document.getElementById("wiz-verify-input").value;
+
+  if (wizard.current < WIZ_STEPS.length - 1) {
+    wizard.current++;
+    renderWizardStep();
+  } else {
+    launchFromWizard();
+  }
+}
+
+function wizardPrev() {
+  if (wizard.current > 0) { wizard.current--; renderWizardStep(); }
+}
+
+function resetWizard() {
+  wizard.current = 0;
+  wizard.answers = { type: "", scope: "", module: "", detail: "", verify: "" };
+  renderWizardStep();
+}
+
+function buildWizardDemand() {
+  const { type, scope, module, detail, verify } = wizard.answers;
+  const typeMap = {
+    "new-feature": "新增功能",
+    "fix-bug": "修復 Bug",
+    "refactor": "重構",
+    "api-change": "API 變更",
+  };
+  const scopeMap = {
+    frontend: "前端（HTML/CSS/JS）",
+    backend: "後端（API/資料庫）",
+    fullstack: "全端（前後端）",
+    infra: "基礎架構",
+  };
+  let prompt = `【${typeMap[type] || type}】【${scopeMap[scope] || scope}】`;
+  if (module) prompt += `\n目標模組：${module}`;
+  if (detail) prompt += `\n詳細描述：${detail}`;
+  if (verify) prompt += `\n驗收標準：${verify}`;
+  return prompt;
+}
+
+function launchFromWizard() {
+  const demand = buildWizardDemand();
+  const config = document.getElementById("cfg-select")?.value || "config.yaml";
+  document.getElementById("demand-input").value = demand;
+  // 切回單一 Agent 模式，只跑 analyzer
+  startWorkflowFromDemand(demand, config);
+}
+
+// 掛鉤手動輸入的 startWorkflow
+const _origStart = startWorkflow;
+startWorkflow = function() {
+  const demand = document.getElementById("demand-input").value.trim();
+  if (!demand) { toast("請輸入需求描述", "err"); return; }
+  startWorkflowFromDemand(demand, document.getElementById("cfg-select")?.value || "config.yaml");
+};
+
+async function startWorkflowFromDemand(demand, config) {
+  document.getElementById("btn-start").disabled = true;
+  document.getElementById("btn-resume").disabled = true;
+  clearTerminal();
+  appendTerm("info", `▶ 啟動工作流：${demand.slice(0, 80)}…\n`);
+  appendTerm("", "─".repeat(50) + "\n");
+  const r = await fetch("/api/workflow/start", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ demand, config })
+  });
+  const d = await r.json();
+  if (d.error) { toast(d.error, "err"); } else { connectStream(); }
+}
+
+// Init wizard on load
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => switchTab(t.dataset.tab)));
+  loadConfigs();
+  refreshStatus();
+  loadArtifacts();
+  loadLog();
+  initWizard();
+  setInterval(function(){refreshStatus();loadLog();loadArtifacts();}, 5000);
+});
+
 async function saveConfig() {
   const saveAs = document.getElementById("save-as").value.trim();
   const name = saveAs || currentConfig;
@@ -646,6 +1009,107 @@ async function saveConfig() {
   } else {
     toast("儲存失敗：" + (d.error || ""), "err");
   }
+}
+
+// ──────────────────────────────────────────────
+// Pipeline Tab
+// ──────────────────────────────────────────────
+
+let selectedAgent = null;
+let pipelineData = null;
+
+async function loadPipeline() {
+  try {
+    const r = await fetch("/api/pipeline");
+    pipelineData = await r.json();
+    renderPipeline(pipelineData);
+  } catch(e) { console.error("loadPipeline error", e); }
+}
+
+function renderPipeline(data) {
+  const track = document.getElementById("pipe-track");
+  const agents = data.agents || [];
+
+  if (!agents.length) {
+    track.innerHTML = '<div style="color:var(--text-dim);font-size:.85rem;padding:16px;">尚無 Pipeline 資料，請先啟動工作流</div>';
+    return;
+  }
+
+  const doneSet = new Set(agents.filter(a => a.status === "done").map(a => a.name));
+  const runningName = agents.find(a => a.status === "running")?.name || "";
+
+  let html = "";
+  agents.forEach((agent, i) => {
+    const isSelected = agent.name === selectedAgent;
+    const icon = agent.status === "done" ? "✓" : agent.status === "running" ? "▶" : "○";
+    const labelCls = "pipe-node-label " + agent.status;
+    const nodeCls = "pipe-node " + agent.status + (isSelected ? " selected" : "");
+
+    html += '<div class="pipe-node-wrap">';
+    html += '<div class="' + nodeCls + '" onclick="selectAgent(\'' + escHtml(agent.name) + '\')" title="' + escHtml(agent.name) + '">' + icon + '<br>' + escHtml(agent.name) + '</div>';
+    html += '<div class="' + labelCls + '">' + escHtml(agent.name) + '</div>';
+    html += '</div>';
+
+    if (i < agents.length - 1) {
+      const connDone = doneSet.has(agent.name) ? "done" : "";
+      html += '<div class="pipe-connector ' + connDone + '"></div>';
+    }
+  });
+
+  track.innerHTML = html;
+
+  // Commit 歷史
+  const commitsEl = document.getElementById("pipe-commits");
+  const commits = data.commits || [];
+  if (!commits.length) {
+    commitsEl.innerHTML = '<div style="color:var(--text-dim);font-size:.85rem;padding:12px;">無 commit 記錄</div>';
+  } else {
+    commitsEl.innerHTML = commits.map(function(c) {
+      return '<div class="pipe-commit"><span class="pipe-commit-hash">' + escHtml(c.hash) + '</span><span class="pipe-commit-msg">' + escHtml(c.msg) + '</span></div>';
+    }).join("");
+  }
+
+  // 如果有執行中的 agent，自動選中
+  if (runningName && !selectedAgent) {
+    selectAgent(runningName);
+  }
+
+  // Status badge
+  document.getElementById("pipe-status").textContent = runningName ? "→ " + runningName : (agents.every(function(a){return a.status==="done"}) ? "✓ 完成" : "");
+}
+
+function selectAgent(name) {
+  selectedAgent = name;
+  const agent = (pipelineData?.agents || []).find(function(a){return a.name === name});
+  if (!agent) return;
+
+  document.getElementById("pipe-detail-empty").style.display = "none";
+  document.getElementById("pipe-detail").style.display = "block";
+
+  const statusLabel = {done:"✓ 完成", running:"▶ 執行中", pending:"○ 待執行", error:"✕ 失敗"};
+  document.getElementById("pd-status").textContent = statusLabel[agent.status] || agent.status;
+  document.getElementById("pd-round").textContent = ((pipelineData?.agents || []).findIndex(function(a){return a.name===name}) + 1);
+  document.getElementById("pd-focus").textContent = agent.focus || "—";
+  document.getElementById("pipe-selected-name").textContent = agent.name;
+
+  const artifactsEl = document.getElementById("pd-artifacts");
+  artifactsEl.innerHTML = (agent.artifacts || []).map(function(a){return '<span class="tag">' + escHtml(a) + '</span>'}).join("")
+    || '<span style="font-size:.78rem;color:var(--text-dim);">—</span>';
+
+  // 更新節點選中狀態
+  document.querySelectorAll(".pipe-node").forEach(function(n) {
+    n.classList.toggle("selected", n.title === name);
+  });
+}
+
+// Pipeline auto-refresh when tab is active
+let pipeInterval = null;
+function startPipeRefresh() {
+  stopPipeRefresh();
+  pipeInterval = setInterval(loadPipeline, 5000);
+}
+function stopPipeRefresh() {
+  if (pipeInterval) { clearInterval(pipeInterval); pipeInterval = null; }
 }
 </script>
 </body>
