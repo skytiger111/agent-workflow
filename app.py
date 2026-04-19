@@ -114,15 +114,19 @@ def start_workflow(cmd: list[str]) -> None:
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,
+            env={**os.environ, "PYTHONUNBUFFERED": "1"},
         )
-    # 等程序結束後解鎖
-    proc = _running_proc
-    try:
-        proc.wait()
-    finally:
-        with _proc_lock:
-            if _running_proc == proc:
-                _running_proc = None
+    # 不等待完成！立即回傳 HTTP response，讓 SSE 有機會在 runner 執行期間連接
+    # runner.sh 結束後由 watchdog thread 負責清理 _running_proc
+    def cleanup():
+        proc = _running_proc
+        try:
+            proc.wait()
+        finally:
+            with _proc_lock:
+                if _running_proc == proc:
+                    _running_proc = None
+    threading.Thread(target=cleanup, daemon=True).start()
 
 
 # ──────────────────────────────────────────────
