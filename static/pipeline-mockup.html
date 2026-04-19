@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipeline Mockup Options</title>
+<style>
+:root {
+  --bg: #0d1117; --surface: #161b22; --surface2: #21262d;
+  --border: #30363d; --text: #e6edf3; --text-dim: #8b949e;
+  --accent: #58a6ff; --accent2: #3fb950; --warn: #d29922;
+  --danger: #f85149; --mono: "Cascadia Code", "Fira Code", monospace;
+}
+body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; padding: 40px; }
+h1 { font-size: 1.1rem; color: var(--text-dim); font-family: var(--mono); margin-bottom: 8px; }
+p { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 40px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 24px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+.card-header h2 { font-size: 0.85rem; font-family: var(--mono); color: var(--accent); }
+.card-body { padding: 24px; }
+
+/* ── Option A: Horizontal Step ── */
+.step-track { display: flex; align-items: center; gap: 0; }
+.step-node { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; position: relative; }
+.step-circle { width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--border); background: var(--bg); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 0.75rem; color: var(--text-dim); transition: all .3s; }
+.step-circle.done { border-color: var(--accent2); background: rgba(63,185,80,.15); color: var(--accent2); }
+.step-circle.running { border-color: var(--warn); background: rgba(210,153,34,.15); color: var(--warn); box-shadow: 0 0 12px rgba(210,153,34,.4); animation: pulse 1.5s infinite; }
+.step-label { font-size: 0.72rem; font-family: var(--mono); color: var(--text-dim); text-align: center; }
+.step-label.done { color: var(--accent2); }
+.step-connector { flex: 0 0 40px; height: 2px; background: var(--border); position: relative; top: -22px; }
+.step-connector.done { background: var(--accent2); }
+@keyframes pulse { 0%,100%{box-shadow:0 0 8px rgba(210,153,34,.4)} 50%{box-shadow:0 0 18px rgba(210,153,34,.7)} }
+
+/* ── Option B: Vertical Timeline ── */
+.timeline { display: flex; flex-direction: column; gap: 0; position: relative; }
+.timeline::before { content:''; position: absolute; left: 27px; top: 28px; bottom: 28px; width: 2px; background: var(--border); }
+.t-item { display: flex; align-items: flex-start; gap: 16px; padding: 10px 0; }
+.t-dot { width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--border); background: var(--bg); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 0.72rem; color: var(--text-dim); flex-shrink: 0; z-index: 1; position: relative; }
+.t-dot.done { border-color: var(--accent2); background: rgba(63,185,80,.15); color: var(--accent2); }
+.t-dot.running { border-color: var(--warn); background: rgba(210,153,34,.15); color: var(--warn); box-shadow: 0 0 12px rgba(210,153,34,.4); animation: pulse 1.5s infinite; }
+.t-content { padding-top: 12px; flex: 1; }
+.t-name { font-family: var(--mono); font-size: 0.85rem; color: var(--text); }
+.t-name.done { color: var(--accent2); }
+.t-time { font-size: 0.72rem; color: var(--text-dim); font-family: var(--mono); margin-top: 2px; }
+.t-status { font-size: 0.72rem; padding: 2px 8px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); margin-left: auto; }
+.t-status.done { background: rgba(63,185,80,.15); border-color: var(--accent2); color: var(--accent2); }
+.t-status.running { background: rgba(210,153,34,.15); border-color: var(--warn); color: var(--warn); }
+
+/* ── Option C: Pipeline Graph ── */
+.pipeline-wrap { position: relative; }
+.pipe { display: flex; flex-direction: column; gap: 0; }
+.pipe-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.node { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); font-family: var(--mono); font-size: 0.8rem; color: var(--text-dim); cursor: default; min-width: 90px; text-align: center; }
+.node.done { border-color: var(--accent2); background: rgba(63,185,80,.15); color: var(--accent2); }
+.node.running { border-color: var(--warn); background: rgba(210,153,34,.15); color: var(--warn); animation: pulse 1.5s infinite; }
+.node.pending { opacity: 0.4; }
+.arrow-right { color: var(--text-dim); font-size: 1.2rem; }
+
+/* ── Option D: Git branch style ── */
+.branch-wrap { display: flex; flex-direction: column; gap: 4px; }
+.branch-row { display: flex; align-items: center; gap: 8px; }
+.branch-line { width: 2px; height: 20px; background: var(--border); margin-left: 14px; }
+.branch-node { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--border); background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-family: var(--mono); color: var(--text-dim); }
+.branch-node.done { border-color: var(--accent2); color: var(--accent2); background: rgba(63,185,80,.15); }
+.branch-node.running { border-color: var(--warn); color: var(--warn); background: rgba(210,153,34,.15); animation: pulse 1.5s infinite; }
+.branch-node.pending { opacity: 0.3; }
+.branch-label { font-family: var(--mono); font-size: 0.8rem; color: var(--text-dim); margin-left: 10px; }
+.branch-label.done { color: var(--accent2); }
+.branch-connector { height: 2px; background: var(--border); flex: 1; }
+.branch-connector.done { background: var(--accent2); }
+
+/* ── Legend ── */
+.legend { display: flex; gap: 16px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-dim); font-family: var(--mono); }
+.legend-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid; }
+.legend-dot.done { border-color: var(--accent2); background: rgba(63,185,80,.3); }
+.legend-dot.running { border-color: var(--warn); background: rgba(210,153,34,.3); }
+.legend-dot.pending { border-color: var(--border); background: transparent; }
+
+</style>
+</head>
+<body>
+
+<h1>Pipeline 可視化 Mockups</h1>
+<p>以「analyzer → backend-dev → frontend-dev → tester → deployer」為例，current=frontend-dev</p>
+
+<div class="grid">
+
+<!-- Option A -->
+<div class="card">
+  <div class="card-header"><h2>A. Horizontal Steps（横排步驟條）</h2></div>
+  <div class="card-body">
+    <div class="step-track">
+      <div class="step-node">
+        <div class="step-circle done">✓</div>
+        <div class="step-label done">analyzer</div>
+      </div>
+      <div class="step-connector done"></div>
+      <div class="step-node">
+        <div class="step-circle done">✓</div>
+        <div class="step-label done">backend-dev</div>
+      </div>
+      <div class="step-connector done"></div>
+      <div class="step-node">
+        <div class="step-circle running">▶</div>
+        <div class="step-label" style="color:var(--warn);">frontend-dev</div>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-node">
+        <div class="step-circle">○</div>
+        <div class="step-label">tester</div>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-node">
+        <div class="step-circle">○</div>
+        <div class="step-label">deployer</div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot done"></div>完成</div>
+      <div class="legend-item"><div class="legend-dot running"></div>執行中</div>
+      <div class="legend-item"><div class="legend-dot pending"></div>待執行</div>
+    </div>
+  </div>
+</div>
+
+<!-- Option B -->
+<div class="card">
+  <div class="card-header"><h2>B. Vertical Timeline（時間軸）</h2></div>
+  <div class="card-body">
+    <div class="timeline">
+      <div class="t-item">
+        <div class="t-dot done">✓</div>
+        <div class="t-content">
+          <div class="t-name done">analyzer</div>
+          <div class="t-time">14:02 – 14:08 (6m)</div>
+        </div>
+        <div class="t-status done">完成</div>
+      </div>
+      <div class="t-item">
+        <div class="t-dot done">✓</div>
+        <div class="t-content">
+          <div class="t-name done">backend-dev</div>
+          <div class="t-time">14:08 – 14:31 (23m)</div>
+        </div>
+        <div class="t-status done">完成</div>
+      </div>
+      <div class="t-item">
+        <div class="t-dot running">▶</div>
+        <div class="t-content">
+          <div class="t-name" style="color:var(--warn)">frontend-dev</div>
+          <div class="t-time" style="color:var(--warn)">14:31 – 進行中…</div>
+        </div>
+        <div class="t-status running">執行中</div>
+      </div>
+      <div class="t-item">
+        <div class="t-dot" style="opacity:.4">○</div>
+        <div class="t-content">
+          <div class="t-name" style="opacity:.4">tester</div>
+          <div class="t-time">—</div>
+        </div>
+        <div class="t-status">待執行</div>
+      </div>
+      <div class="t-item">
+        <div class="t-dot" style="opacity:.4">○</div>
+        <div class="t-content">
+          <div class="t-name" style="opacity:.4">deployer</div>
+          <div class="t-time">—</div>
+        </div>
+        <div class="t-status">待執行</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Option C -->
+<div class="card">
+  <div class="card-header"><h2>C. Pipeline Node Graph（節點圖）</h2></div>
+  <div class="card-body">
+    <div class="pipeline-wrap">
+      <div class="pipe">
+        <div class="pipe-row">
+          <div class="node done">analyzer</div>
+          <span class="arrow-right">→</span>
+          <div class="node done">backend-dev</div>
+          <span class="arrow-right">→</span>
+          <div class="node running">frontend-dev</div>
+          <span class="arrow-right">→</span>
+          <div class="node pending">tester</div>
+          <span class="arrow-right">→</span>
+          <div class="node pending">deployer</div>
+        </div>
+      </div>
+      <div style="margin-top:24px; padding:12px; background:var(--bg); border:1px solid var(--border); border-radius:8px;">
+        <div style="font-size:0.75rem; font-family:var(--mono); color:var(--text-dim); margin-bottom:8px;">frontend-dev 執行摘要</div>
+        <div style="font-size:0.78rem; font-family:var(--mono); color:var(--warn);">● 執行中 — Round 3</div>
+        <div style="font-size:0.72rem; font-family:var(--mono); color:var(--text-dim); margin-top:6px;">focus: 依據 API 合約實作前端 UI</div>
+        <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+          <span style="font-size:0.7rem; padding:2px 8px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; font-family:var(--mono); color:var(--text-dim);">tokens: ~32k</span>
+          <span style="font-size:0.7rem; padding:2px 8px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; font-family:var(--mono); color:var(--text-dim);">elapsed: 4m 22s</span>
+        </div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot done"></div>完成</div>
+      <div class="legend-item"><div class="legend-dot running"></div>執行中</div>
+      <div class="legend-item"><div class="legend-dot pending"></div>待執行</div>
+    </div>
+  </div>
+</div>
+
+<!-- Option D -->
+<div class="card">
+  <div class="card-header"><h2>D. Git Branch Style（Git 風格）</h2></div>
+  <div class="card-body">
+    <div class="branch-wrap">
+      <div class="branch-row">
+        <div class="branch-node done">✓</div>
+        <div class="branch-connector done"></div>
+        <div class="branch-label done">analyzer</div>
+        <span style="margin-left:auto; font-size:0.7rem; font-family:var(--mono); color:var(--accent2);">完成</span>
+      </div>
+      <div class="branch-line" style="background:var(--accent2);"></div>
+      <div class="branch-row">
+        <div class="branch-node done">✓</div>
+        <div class="branch-connector done"></div>
+        <div class="branch-label done">backend-dev</div>
+        <span style="margin-left:auto; font-size:0.7rem; font-family:var(--mono); color:var(--accent2);">完成</span>
+      </div>
+      <div class="branch-line" style="background:var(--warn);"></div>
+      <div class="branch-row">
+        <div class="branch-node running">▶</div>
+        <div class="branch-connector" style="background:var(--warn);"></div>
+        <div class="branch-label" style="color:var(--warn)">frontend-dev</div>
+        <span style="margin-left:auto; font-size:0.7rem; font-family:var(--mono); color:var(--warn);">執行中</span>
+      </div>
+      <div class="branch-line"></div>
+      <div class="branch-row">
+        <div class="branch-node pending">○</div>
+        <div class="branch-connector"></div>
+        <div class="branch-label" style="opacity:.4">tester</div>
+        <span style="margin-left:auto; font-size:0.7rem; font-family:var(--mono); color:var(--text-dim); opacity:.4">待執行</span>
+      </div>
+      <div class="branch-line"></div>
+      <div class="branch-row">
+        <div class="branch-node pending">○</div>
+        <div class="branch-connector"></div>
+        <div class="branch-label" style="opacity:.4">deployer</div>
+        <span style="margin-left:auto; font-size:0.7rem; font-family:var(--mono); color:var(--text-dim); opacity:.4">待執行</span>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot done"></div>完成</div>
+      <div class="legend-item"><div class="legend-dot running"></div>執行中</div>
+      <div class="legend-item"><div class="legend-dot pending"></div>待執行</div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<div style="margin-top:32px; padding:16px 20px; background:var(--surface); border:1px solid var(--border); border-radius:8px; max-width:800px;">
+  <div style="font-size:0.78rem; font-family:var(--mono); color:var(--text-dim); margin-bottom:8px;">💡 我的建議</div>
+  <div style="font-size:0.85rem; line-height:1.8;">
+    <strong style="color:var(--accent)">Option A + C 混合</strong>：儀表板頂部用横排步驟條（一眼看到全局），點進 Pipeline Tab 後用節點圖 + 細節面板。<br>
+    標虎團隊風格偏工程感，Git branch style（D）視覺最強烈，但需要更多版面空間。
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>味味牛肉麵 — 首頁</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- ===== 導覽列 ===== -->
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="/" class="brand">味味牛肉麵</a>
+    <nav class="header-nav" id="headerNav">
+      <a href="/order" class="nav-link">菜單點餐</a>
+      <a href="/order#lookup" class="nav-link">查詢訂單</a>
+      <a href="#" class="nav-link" id="navPoints">我的點數</a>
+      <div class="header-auth" id="headerAuth">
+        <button class="btn btn-outline" id="btnLogin">會員登入</button>
+        <button class="btn btn-primary" id="btnRegister">加入會員</button>
+      </div>
+      <div class="header-member hidden" id="headerMember">
+        <span class="member-greeting" id="memberGreeting"></span>
+        <span class="member-points-badge">點數：<strong id="headerPoints">—</strong></span>
+        <button class="btn btn-outline btn-sm" id="btnLogout">登出</button>
+      </div>
+    </nav>
+    <button class="hamburger" id="hamburger" aria-label="選單">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<!-- ===== 主要橫幅 ===== -->
+<section class="hero">
+  <div class="container hero-content">
+    <h1 class="hero-title">一碗好麵，暖在心裡</h1>
+    <p class="hero-sub">嚴選食材、手工拉麵，吃過就回不去的滋味</p>
+    <a href="/order" class="btn btn-primary btn-lg">開始點餐</a>
+  </div>
+</section>
+
+<!-- ===== 特色亮點 ===== -->
+<section class="section features">
+  <div class="container">
+    <h2 class="section-title">為什麼選擇我們</h2>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🍜</div>
+        <h3>現點現做</h3>
+        <p>每一碗麵都是您下單後才開始烹煮，新鮮不打折</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⭐</div>
+        <h3>會員積點</h3>
+        <p>消費 1 元累積 1 點，點數可直接折抵消費</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📱</div>
+        <h3>線上點餐</h3>
+        <p>免打電話，滑手機就能輕鬆完成點餐</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 精選菜單 ===== -->
+<section class="section section-alt">
+  <div class="container">
+    <h2 class="section-title">精選推薦</h2>
+    <div class="menu-preview" id="menuPreview">
+      <div class="loading-state">載入中…</div>
+    </div>
+    <div class="text-center" style="margin-top:2rem">
+      <a href="/order" class="btn btn-outline btn-lg">查看完整菜單</a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 會員專區 ===== -->
+<section class="section member-cta" id="memberCta">
+  <div class="container">
+    <div class="cta-card">
+      <div class="cta-text">
+        <h2>加入會員，享更多優惠</h2>
+        <p>註冊即為會員，消費累積點數，點數可直接折抵訂單，聰明吃好麵。</p>
+        <ul class="cta-benefits">
+          <li>✅ 消費 1 元累積 1 點</li>
+          <li>✅ 點數 1 點折抵 1 元</li>
+          <li>✅ 查詢消費與點數紀錄</li>
+        </ul>
+      </div>
+      <div class="cta-actions" id="ctaActions">
+        <button class="btn btn-primary btn-lg" id="ctaRegister">免費加入會員</button>
+        <button class="btn btn-outline btn-lg" id="ctaLogin">已是會員，登入</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 登入 Modal ===== -->
+<div class="modal-overlay hidden" id="loginModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+    <h3 id="loginTitle" class="modal-title">會員登入</h3>
+    <form id="loginForm" class="modal-form" novalidate>
+      <div class="form-group">
+        <label for="loginPhone">電話號碼</label>
+        <input type="tel" id="loginPhone" name="phone" placeholder="0912345678" maxlength="10" required>
+      </div>
+      <div class="form-group">
+        <label for="loginPassword">密碼</label>
+        <input type="password" id="loginPassword" name="password" placeholder="請輸入密碼" required>
+      </div>
+      <div class="form-error hidden" id="loginError"></div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary">登入</button>
+        <button type="button" class="btn btn-outline" id="loginCancel">取消</button>
+      </div>
+    </form>
+    <p class="modal-footer-text">還不是會員？<a href="#" id="loginToRegister">立即註冊</a></p>
+  </div>
+</div>
+
+<!-- ===== 註冊 Modal ===== -->
+<div class="modal-overlay hidden" id="registerModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="registerTitle">
+    <h3 id="registerTitle" class="modal-title">加入會員</h3>
+    <form id="registerForm" class="modal-form" novalidate>
+      <div class="form-group">
+        <label for="regName">姓名</label>
+        <input type="text" id="regName" name="name" placeholder="王小明" required>
+      </div>
+      <div class="form-group">
+        <label for="regPhone">電話號碼</label>
+        <input type="tel" id="regPhone" name="phone" placeholder="0912345678" maxlength="10" required>
+      </div>
+      <div class="form-group">
+        <label for="regPassword">密碼</label>
+        <input type="password" id="regPassword" name="password" placeholder="至少 4 個字元" minlength="4" required>
+      </div>
+      <div class="form-error hidden" id="regError"></div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary">註冊</button>
+        <button type="button" class="btn btn-outline" id="registerCancel">取消</button>
+      </div>
+    </form>
+    <p class="modal-footer-text">已是會員？<a href="#" id="registerToLogin">登入</a></p>
+  </div>
+</div>
+
+<!-- ===== 點數查詢 Modal ===== -->
+<div class="modal-overlay hidden" id="pointsModal">
+  <div class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="pointsTitle">
+    <h3 id="pointsTitle" class="modal-title">我的點數</h3>
+    <div class="points-summary" id="pointsSummary">
+      <div class="points-balance">
+        <span class="points-label">目前可用點數</span>
+        <span class="points-value" id="pointsValue">—</span>
+      </div>
+    </div>
+    <div class="points-history" id="pointsHistory">
+      <h4>點數紀錄</h4>
+      <div id="pointsHistoryList">載入中…</div>
+    </div>
+    <div class="form-error hidden" id="pointsError"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-outline" id="pointsClose">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 頁尾 ===== -->
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <span class="brand">味味牛肉麵</span>
+      <p>新北市板橋區文化路一段 123 號</p>
+      <p>電話：02-1234-5678</p>
+    </div>
+    <div class="footer-links">
+      <a href="/order">線上點餐</a>
+      <a href="/order#lookup">查詢訂單</a>
+      <a href="/admin/login">管理後台</a>
+    </div>
+  </div>
+  <div class="footer-copy">
+    <p>© 2026 味味牛肉麵 · Developed with 🐯 by 標虎團隊</p>
+  </div>
+</footer>
+
+<script>
+// ─── 會員狀態管理 ──────────────────────────────────────────────
+const SESSION_KEY = 'member';
+
+function getSession() {
+  try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)) || {}; }
+  catch { return {}; }
+}
+
+function saveSession(data) {
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(data));
+  renderMemberUI(data);
+}
+
+function clearSession() {
+  sessionStorage.removeItem(SESSION_KEY);
+  renderMemberUI({});
+}
+
+function renderMemberUI(member) {
+  const auth = document.getElementById('headerAuth');
+  const mb = document.getElementById('headerMember');
+  const cta = document.getElementById('ctaActions');
+  if (!member || !member.member_id) {
+    auth.classList.remove('hidden');
+    mb.classList.add('hidden');
+    if (cta) cta.classList.remove('hidden');
+  } else {
+    auth.classList.add('hidden');
+    mb.classList.remove('hidden');
+    if (cta) cta.classList.add('hidden');
+    document.getElementById('memberGreeting').textContent = member.name + '，你好';
+    document.getElementById('headerPoints').textContent = member.points;
+  }
+}
+
+// ─── API 工具 ───────────────────────────────────────────────────
+async function apiFetch(url, opts = {}) {
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json', ...opts.headers },
+    ...opts,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(json.error || '請求失敗'), { status: res.status, json });
+  return json;
+}
+
+// ─── 精選菜單 ───────────────────────────────────────────────────
+async function loadMenuPreview() {
+  const el = document.getElementById('menuPreview');
+  try {
+    const { menu } = await apiFetch('/api/menu');
+    const items = menu.slice(0, 4);
+    el.innerHTML = items.map(item => `
+      <div class="menu-card">
+        <div class="menu-card-body">
+          <span class="menu-category-tag">${item.category || ''}</span>
+          <h3 class="menu-card-name">${item.name}</h3>
+          <p class="menu-card-price">$${item.price}</p>
+        </div>
+        ${!item.available ? '<span class="unavailable-badge">已售完</span>' : ''}
+      </div>
+    `).join('');
+  } catch {
+    el.innerHTML = '<p class="error-state">載入失敗，請稍後重試。</p>';
+  }
+}
+
+// ─── 登入 ──────────────────────────────────────────────────────
+document.getElementById('btnLogin')?.addEventListener('click', openLogin);
+document.getElementById('ctaLogin')?.addEventListener('click', openLogin);
+
+function openLogin() {
+  closeAllModals();
+  document.getElementById('loginModal').classList.remove('hidden');
+}
+
+document.getElementById('loginCancel')?.addEventListener('click', () =>
+  document.getElementById('loginModal').classList.add('hidden'));
+
+document.getElementById('loginToRegister')?.addEventListener('click', e => {
+  e.preventDefault();
+  document.getElementById('loginModal').classList.add('hidden');
+  document.getElementById('registerModal').classList.remove('hidden');
+});
+
+document.getElementById('loginForm')?.addEventListener('submit', async e => {
+  e.preventDefault();
+  const err = document.getElementById('loginError');
+  err.classList.add('hidden');
+  const data = { phone: document.getElementById('loginPhone').value.trim(), password: document.getElementById('loginPassword').value };
+  try {
+    const res = await apiFetch('/api/members/login', { method: 'POST', body: JSON.stringify(data) });
+    saveSession(res);
+    document.getElementById('loginModal').classList.add('hidden');
+    showToast('登入成功！');
+  } catch (err) {
+    err.textContent = err.message;
+    err.classList.remove('hidden');
+  }
+});
+
+// ─── 註冊 ──────────────────────────────────────────────────────
+document.getElementById('btnRegister')?.addEventListener('click', openRegister);
+document.getElementById('ctaRegister')?.addEventListener('click', openRegister);
+
+function openRegister() {
+  closeAllModals();
+  document.getElementById('registerModal').classList.remove('hidden');
+}
+
+document.getElementById('registerCancel')?.addEventListener('click', () =>
+  document.getElementById('registerModal').classList.add('hidden'));
+
+document.getElementById('registerToLogin')?.addEventListener('click', e => {
+  e.preventDefault();
+  document.getElementById('registerModal').classList.add('hidden');
+  document.getElementById('loginModal').classList.remove('hidden');
+});
+
+document.getElementById('registerForm')?.addEventListener('submit', async e => {
+  e.preventDefault();
+  const err = document.getElementById('regError');
+  err.classList.add('hidden');
+  const data = {
+    name: document.getElementById('regName').value.trim(),
+    phone: document.getElementById('regPhone').value.trim(),
+    password: document.getElementById('regPassword').value,
+  };
+  try {
+    await apiFetch('/api/members/register', { method: 'POST', body: JSON.stringify(data) });
+    document.getElementById('registerModal').classList.add('hidden');
+    showToast('註冊成功！即為您登入…');
+    // auto login
+    const login = await apiFetch('/api/members/login', { method: 'POST', body: JSON.stringify({ phone: data.phone, password: data.password }) });
+    saveSession(login);
+  } catch (err) {
+    err.textContent = err.message;
+    err.classList.remove('hidden');
+  }
+});
+
+// ─── 登出 ──────────────────────────────────────────────────────
+document.getElementById('btnLogout')?.addEventListener('click', async () => {
+  await fetch('/api/members/logout', { method: 'POST' }).catch(() => {});
+  clearSession();
+  showToast('已登出');
+});
+
+// ─── 我的點數 ───────────────────────────────────────────────────
+document.getElementById('navPoints')?.addEventListener('click', e => {
+  e.preventDefault();
+  openPoints();
+});
+
+async function openPoints() {
+  const m = getSession();
+  if (!m || !m.member_id) {
+    showToast('請先登入會員');
+    openLogin();
+    return;
+  }
+  const modal = document.getElementById('pointsModal');
+  modal.classList.remove('hidden');
+  document.getElementById('pointsError').classList.add('hidden');
+  try {
+    const data = await apiFetch('/api/members/points');
+    document.getElementById('pointsValue').textContent = data.points;
+    const list = document.getElementById('pointsHistoryList');
+    if (!data.history || data.history.length === 0) {
+      list.innerHTML = '<p class="text-muted">尚無點數紀錄</p>';
+    } else {
+      list.innerHTML = data.history.map(h => `
+        <div class="history-item ${h.type === 'redeem' ? 'history-redeem' : 'history-earn'}">
+          <span class="history-type">${h.type === 'earn' ? '累積' : '折抵'}</span>
+          <span class="history-pts">${h.points > 0 ? '+' : ''}${h.points}</span>
+          <span class="history-desc">${h.description || ''}</span>
+          <span class="history-date">${h.created_at ? new Date(h.created_at).toLocaleDateString('zh-Hant') : ''}</span>
+        </div>
+      `).join('');
+    }
+  } catch (err) {
+    const errEl = document.getElementById('pointsError');
+    errEl.textContent = err.message || '無法載入點數';
+    errEl.classList.remove('hidden');
+  }
+}
+
+document.getElementById('pointsClose')?.addEventListener('click', () =>
+  document.getElementById('pointsModal').classList.add('hidden'));
+
+// ─── Modal 關閉 ─────────────────────────────────────────────────
+function closeAllModals() {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.add('hidden'));
+}
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.add('hidden');
+  });
+});
+
+// ─── 汉堡選單 ──────────────────────────────────────────────────
+document.getElementById('hamburger')?.addEventListener('click', () => {
+  document.getElementById('headerNav').classList.toggle('nav-open');
+});
+
+// ─── Toast 通知 ─────────────────────────────────────────────────
+function showToast(msg) {
+  const existing = document.getElementById('toast');
+  if (existing) existing.remove();
+  const t = document.createElement('div');
+  t.id = 'toast';
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.classList.add('toast-show'), 10);
+  setTimeout(() => { t.classList.remove('toast-show'); setTimeout(() => t.remove(), 300); }, 2500);
+}
+
+// ─── 初始化 ────────────────────────────────────────────────────
+(async () => {
+  renderMemberUI(getSession());
+  await loadMenuPreview();
+})();
+</script>
+</body>
+</html>

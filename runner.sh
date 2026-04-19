@@ -157,7 +157,7 @@ ensure_remote() {
 #------------------------------------------
 list_project_files() {
   if [[ -d "$PROJECT_ROOT" ]]; then
-    (cd "$PROJECT_ROOT" && find . -maxdepth 3 -type f \( -name "*.py" -o -name "*.js" -o -name "*.html" -o -name "*.css" -o -name "*.yaml" -o -name "*.json" \) | head -40) 2>/dev/null || echo "(專案目錄為空或無法存取)"
+    (cd "$PROJECT_ROOT" && find . -maxdepth 5 -type f \( -name "*.py" -o -name "*.js" -o -name "*.ts" -o -name "*.html" -o -name "*.css" -o -name "*.yaml" -o -name "*.yml" -o -name "*.json" -o -name "*.md" -o -name "*.sh" \) -not -path "./node_modules/*" -not -path "./.git/*" -not -path "./dist/*" -not -path "./build/*" | sort | head -80) 2>/dev/null || echo "(專案目錄為空或無法存取)"
   else
     echo "(專案目錄不存在: $PROJECT_ROOT)"
   fi
@@ -167,18 +167,7 @@ list_project_files() {
 # 替換 prompt 模板中的變數
 #------------------------------------------
 render_prompt() {
-  local template="$1"
-  local project_files
-  project_files=$(list_project_files)
-
-  echo "$template" | sed \
-    -e "s|{user_demand}|$USER_DEMAND|g" \
-    -e "s|{project_root}|$PROJECT_ROOT|g" \
-    -e "s|{artifacts_dir}|$ARTIFACTS_DIR|g" \
-    -e "s|{handoff_file}|$HANDOFF|g" \
-    -e "s|{git_remote}|$GIT_REMOTE|g" \
-    -e "s|{git_branch}|$GIT_BRANCH|g" \
-    -e "s|{project_files}|$project_files|g"
+  python3 "$WORKFLOW_DIR/lib/render_prompt.py" "$1"
 }
 
 #------------------------------------------
@@ -194,6 +183,9 @@ run_agent() {
   info "Agent: $agent_name"
   [[ -n "$focus" ]] && info "囑託: $focus"
   info "=========================================="
+
+  # 將 config 變數 export 給 subagent（claude CLI 需看得見）
+  export PROJECT_ROOT GIT_REMOTE GIT_BRANCH ARTIFACTS_DIR HANDOFF USER_DEMAND
 
   # 替換 prompt 模板中的變數（{user_demand}, {project_files} 等）
   local rendered_task
@@ -324,6 +316,7 @@ get_agent_commit() {
 cmd_start() {
   local user_demand="${1:-}"
   [[ -z "$user_demand" ]] && error "請提供需求：./runner.sh start \"你的需求\""
+  export USER_DEMAND="$user_demand"
 
   load_config "${2:-${CONFIG_FILE}}"
   load_agents_from_config
@@ -331,8 +324,7 @@ cmd_start() {
   if [[ ${#AGENTS[@]} -eq 0 ]]; then
     warn "無法從 config.yaml 讀取 Agent 列表，使用預設值"
     AGENTS=("analyzer" "backend-dev" "frontend-dev" "tester" "deployer")
-    [[ -z "$PROJECT_ROOT" ]] && PROJECT_ROOT="/Users/tigerclaw/code/order-system"
-    [[ -z "$GIT_REMOTE" ]] && GIT_REMOTE="https://github.com/skytiger111/order-system.git"
+    # 不再硬編碼路徑，agent 自 config.yaml 讀取 project_root
   fi
 
   init_dirs

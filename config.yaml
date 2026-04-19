@@ -1,0 +1,140 @@
+name: minimax-image-server-workflow
+version: '1.1'
+project_root: /Users/tigerclaw/code/minimax-image-server
+git_remote: https://github.com/skytiger111/minimax-image-server
+git_branch: main
+
+agents:
+  - name: analyzer
+    description: 需求分析：產出 SPEC.md
+    prompt_template: |
+      需求：{user_demand}
+
+      現有專案結構（供參考）：
+      {project_files}
+
+      現有後端：{project_root}/src/index.ts（Express + TypeScript，內嵌 HTML UI）
+      現有多媒體 API：MiniMax image-01 / speech-2.8-hd / music-2.5 / Hailuo-2.3
+
+      請產出 {artifacts_dir}/SPEC.md，包含：
+      - 功能範圍與 YAGNI 邊界
+      - API 端點（request/response 格式）
+      - 前端 UI 佈局與元件
+      - 異常處理對應 HTTP 狀態碼
+
+    artifacts:
+      - '{artifacts_dir}/SPEC.md'
+
+    commit_message: 'chore: analyzer 完成需求分析'
+
+  - name: backend-dev
+    description: 後端實作：Express API + 圖片處理
+    prompt_template: |
+      依據 SPEC.md 實作後端功能
+
+      ⚠️ 重要：直接修改 {project_root}/src/index.ts
+      ⚠️ api-contract.md 只是規格參考，請勿只寫規格，要真正修改後端程式碼
+
+      現有入口：{project_root}/src/index.ts（Express + TypeScript）
+      現有 API：/api/generate, /api/image2image, /api/tts, /api/music, /api/video/*
+      現有圖片處理：sharp（已安裝）、jimp（已安裝）
+      MiniMax API：金鑰在環境變數 MINIMAX_API_KEY
+
+      實作完成後，在 {artifacts_dir}/api-contract.md 補上 API 合約作為文件記錄。
+
+    artifacts:
+      - '{artifacts_dir}/api-contract.md'
+
+    commit_message: 'feat: backend-dev 完成後端實作'
+
+  - name: frontend-dev
+    description: 前端實作：HTML/CSS/JS（內嵌於 Express）
+    prompt_template: |
+      依據 SPEC.md 和 api-contract.md 實作前端 UI
+
+      ⚠️ 重要：直接修改 {project_root}/src/index.ts 內的 UI 變數（const UI = `...`）
+      ⚠️ 請勿只寫規格，要真正修改前端 HTML/JS
+
+      現有 UI 內嵌在 {project_root}/src/index.ts 的 `const UI` 變數中
+      tab 按鈕結構：<button class="tab-btn" data-tab="xxx">
+      tab 內容結構：<div id="xxx" class="tab-content">
+      JS 邏輯在 <script>...</script> 區塊內
+
+      需新增的 tab 或修改 tab，請直接修改 UI 變數字串
+
+    artifacts:
+      - '{artifacts_dir}/component-spec.md'
+
+    commit_message: 'feat: frontend-dev 完成前端實作'
+
+  - name: tester
+    description: 測試：jest 單元測試與整合測試
+    prompt_template: |
+      為 minimax-image-server 撰寫測試
+
+      SPEC.md：{artifacts_dir}/SPEC.md
+      後端入口：{project_root}/src/index.ts
+
+      測試框架：jest（已為 MCP server 所需）
+      測試目標：
+      - API 端點（/api/generate, /api/tts, /api/music, /api/video/* 等）
+      - 參數驗證（400 錯誤）
+      - Mock axios 呼叫避免實際 API 呼叫
+
+      測試檔放在 {project_root}/tests/（Jest 設定）
+
+    artifacts:
+      - '{artifacts_dir}/test-report.md'
+
+    commit_message: 'test: tester 完成測試撰寫'
+
+  - name: deployer
+    description: 部署：git push + 更新 README.md 版本說明
+    prompt_template: |
+      將 minimax-image-server 部署到 GitHub，並更新 README.md 變更紀錄
+
+      專案根目錄：{project_root}
+      Remote：{git_remote}
+      預設分支：{git_branch}
+
+      請依序執行：
+
+      1. 確認所有檔案已 commit（git status）
+         如有未 commit 的變更，先 git add + git commit
+
+      2. 讀取 {artifacts_dir}/SPEC.md，取出本次實作的功能摘要
+         如無 SPEC.md，則用 git log --oneline -5 抓取最近 commit 列表
+
+      3. 在 {project_root}/README.md 頂部插入版本紀錄：
+         ```markdown
+         ## 📋 更新紀錄
+
+         ### vX.X.X — YYYY-MM-DD
+         **本版功能：**
+         - [功能描述]
+
+         ---
+         ```
+         版本號由 config.yaml 的 version 欄位讀取
+         如 README.md 已有「## 📋 更新紀錄」區塊，則在其頂部插入新版本段落，不覆寫舊記錄
+
+      4. 將更新後的 README.md commit（額外一個 commit）
+
+      5. git push origin {git_branch}
+
+      6. 更新 {artifacts_dir}/deploy-status.md（部署時間、版本號、推送結果）
+
+    artifacts:
+      - '{artifacts_dir}/deploy-status.md'
+
+    commit_message: 'deploy: 完成部署'
+
+handoff_footer: |
+  ⚠️ 實作類 Agent（backend-dev、frontend-dev）請直接修改 {project_root} 內的程式碼
+  ⚠️ 規格文件（SPEC.md、api-contract.md、test-report.md）才寫入 {artifacts_dir}/
+
+  完成後：
+  1. 實作程式碼 → {project_root}/（直接修改）
+  2. 規格文件 → {artifacts_dir}/（對照參考用）
+  3. 更新 {handoff_file}
+  4. 在 {project_root} 執行 git add + commit

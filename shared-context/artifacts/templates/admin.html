@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理後台 — 味味牛肉麵</title>
+  <link rel="stylesheet" href="/static/css/admin.css">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- ===== 管理後台外層 ===== -->
+<div class="admin-shell">
+
+  <!-- 側邊欄 -->
+  <aside class="admin-sidebar">
+    <div class="sidebar-brand">
+      <a href="/" class="brand">味味牛肉麵</a>
+      <span class="sidebar-role">管理後台</span>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="sidebar-link active" data-tab="orders">
+        <span class="sidebar-icon">📋</span> 訂單管理
+      </button>
+      <button class="sidebar-link" data-tab="report">
+        <span class="sidebar-icon">📊</span> 日報表
+      </button>
+      <button class="sidebar-link" data-tab="members">
+        <span class="sidebar-icon">👥</span> 會員管理
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="/" class="sidebar-link">← 回前台</a>
+      <button class="sidebar-link text-danger" id="btnAdminLogout">登出</button>
+    </div>
+  </aside>
+
+  <!-- 主內容 -->
+  <main class="admin-main">
+
+    <!-- 頁首 -->
+    <header class="admin-header">
+      <h1 class="admin-page-title" id="pageTitle">訂單管理</h1>
+      <div class="admin-header-right">
+        <span class="admin-user">{{ username }}</span>
+      </div>
+    </header>
+
+    <!-- ===== 訂單管理 ===== -->
+    <section class="admin-content" id="tabOrders">
+
+      <!-- 狀態篩選 -->
+      <div class="admin-filters">
+        <label class="filter-label">篩選狀態：</label>
+        <div class="filter-tabs" id="statusFilter">
+          <button class="filter-tab active" data-status="">全部</button>
+          <button class="filter-tab" data-status="pending">等待中</button>
+          <button class="filter-tab" data-status="preparing">製作中</button>
+          <button class="filter-tab" data-status="completed">已完成</button>
+          <button class="filter-tab" data-status="cancelled">已取消</button>
+        </div>
+        <button class="btn btn-outline btn-sm" id="btnRefreshOrders">🔄 刷新</button>
+      </div>
+
+      <!-- 訂單計數 -->
+      <div class="admin-stats-row">
+        <div class="stat-card">
+          <span class="stat-value" id="statTotal">—</span>
+          <span class="stat-label">總訂單</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value text-warning" id="statPending">—</span>
+          <span class="stat-label">等待中</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value text-primary" id="statPreparing">—</span>
+          <span class="stat-label">製作中</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value text-success" id="statCompleted">—</span>
+          <span class="stat-label">已完成</span>
+        </div>
+      </div>
+
+      <!-- 訂單列表 -->
+      <div class="admin-table-wrap">
+        <table class="admin-table" id="ordersTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>顧客</th>
+              <th>電話</th>
+              <th>品項摘要</th>
+              <th>金額</th>
+              <th>狀態</th>
+              <th>時間</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="ordersTbody">
+            <tr><td colspan="8" class="loading-state">載入中…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== 日報表 ===== -->
+    <section class="admin-content hidden" id="tabReport">
+      <div class="report-controls">
+        <label for="reportDate">選擇日期：</label>
+        <input type="date" id="reportDate" class="form-input">
+        <button class="btn btn-primary" id="btnLoadReport">查詢</button>
+      </div>
+      <div id="reportContent">
+        <p class="text-muted">請選擇日期查詢報表</p>
+      </div>
+    </section>
+
+    <!-- ===== 會員管理 ===== -->
+    <section class="admin-content hidden" id="tabMembers">
+      <div class="admin-filters">
+        <label class="filter-label">搜尋電話：</label>
+        <input type="tel" id="memberSearchInput" class="form-input" placeholder="0912" maxlength="10">
+        <button class="btn btn-primary btn-sm" id="btnSearchMember">搜尋</button>
+        <button class="btn btn-outline btn-sm" id="btnListAllMembers">全部會員</button>
+      </div>
+
+      <div class="admin-table-wrap">
+        <table class="admin-table" id="membersTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>姓名</th>
+              <th>電話</th>
+              <th>點數</th>
+              <th>註冊時間</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="membersTbody">
+            <tr><td colspan="6" class="loading-state">載入中…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===== 訂單詳情 Modal ===== -->
+<div class="modal-overlay hidden" id="orderDetailModal">
+  <div class="modal modal-lg" role="dialog" aria-modal="true">
+    <h3 class="modal-title">訂單 #<span id="odOrderId"></span> 詳情</h3>
+    <div class="order-detail-grid" id="odDetail"></div>
+    <div class="form-group" style="margin-top:1rem">
+      <label for="odNewStatus">修改狀態</label>
+      <div class="modal-actions">
+        <select id="odNewStatus" class="form-input" style="flex:1">
+          <option value="pending">等待中</option>
+          <option value="preparing">製作中</option>
+          <option value="completed">已完成</option>
+          <option value="cancelled">已取消</option>
+        </select>
+        <button class="btn btn-primary" id="btnUpdateStatus">更新狀態</button>
+        <button class="btn btn-outline" id="odClose">關閉</button>
+      </div>
+    </div>
+    <div class="form-error hidden" id="odError"></div>
+  </div>
+</div>
+
+<!-- ===== 會員詳情 Modal ===== -->
+<div class="modal-overlay hidden" id="memberDetailModal">
+  <div class="modal modal-lg" role="dialog" aria-modal="true">
+    <h3 class="modal-title">會員資料</h3>
+    <div id="memberDetail"></div>
+    <hr>
+    <h4>點數調整</h4>
+    <div class="adjust-form">
+      <input type="number" id="adjPoints" class="form-input" placeholder="輸入正數增加、負數減少">
+      <input type="text" id="adjReason" class="form-input" placeholder="調整原因（選填）">
+      <button class="btn btn-primary btn-sm" id="btnAdjustPoints">確認調整</button>
+    </div>
+    <div class="form-error hidden" id="adjError"></div>
+    <div class="modal-actions" style="margin-top:1rem">
+      <button class="btn btn-outline" id="memberDetailClose">關閉</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── 狀態 ───────────────────────────────────────────────────────
+let currentStatus = '';
+let currentMemberId = null;
+const statusMap = { pending: '等待中', preparing: '製作中', completed: '已完成', cancelled: '已取消' };
+const statusClass = { pending: 'status-pending', preparing: 'status-preparing', completed: 'status-completed', cancelled: 'status-cancelled' };
+
+// ─── 工具 ───────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.id = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.classList.add('toast-show'), 10);
+  setTimeout(() => { t.classList.remove('toast-show'); setTimeout(() => t.remove(), 300); }, 2500);
+}
+
+async function apiFetch(url, opts = {}) {
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json', ...opts.headers },
+    ...opts,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(json.error || '操作失敗'), { status: res.status, json });
+  return json;
+}
+
+function fmt(dt) {
+  if (!dt) return '—';
+  return new Date(dt).toLocaleString('zh-Hant', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+// ─── Tab 切換 ───────────────────────────────────────────────────
+document.querySelectorAll('.sidebar-link[data-tab]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('.sidebar-link').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.admin-content').forEach(c => c.classList.add('hidden'));
+    const titles = { orders: '訂單管理', report: '日報表', members: '會員管理' };
+    $('pageTitle').textContent = titles[tab] || '';
+    const section = $('tab' + tab.charAt(0).toUpperCase() + tab.slice(1));
+    if (section) section.classList.remove('hidden');
+    if (tab === 'orders') loadOrders();
+    if (tab === 'report') { const d = new Date().toISOString().slice(0, 10); $('reportDate').value = d; }
+    if (tab === 'members') loadMembers();
+  });
+});
+
+// ─── 訂單 ───────────────────────────────────────────────────────
+async function loadOrders(status = '') {
+  currentStatus = status;
+  $('ordersTbody').innerHTML = '<tr><td colspan="8" class="loading-state">載入中…</td></tr>';
+  try {
+    const url = status ? `/api/admin/orders?status=${encodeURIComponent(status)}` : '/api/admin/orders';
+    const { orders } = await apiFetch(url);
+    renderOrders(orders || []);
+    // 更新統計
+    if (!status) {
+      const all = orders || [];
+      $('statTotal').textContent = all.length;
+      $('statPending').textContent = all.filter(o => o.status === 'pending').length;
+      $('statPreparing').textContent = all.filter(o => o.status === 'preparing').length;
+      $('statCompleted').textContent = all.filter(o => o.status === 'completed').length;
+    }
+  } catch {
+    $('ordersTbody').innerHTML = '<tr><td colspan="8" class="error-state">載入失敗</td></tr>';
+  }
+}
+
+function renderOrders(orders) {
+  if (orders.length === 0) {
+    $('ordersTbody').innerHTML = '<tr><td colspan="8" class="empty-state">目前沒有訂單</td></tr>';
+    return;
+  }
+  $('ordersTbody').innerHTML = orders.map(o => `
+    <tr>
+      <td><strong>#${o.id}</strong></td>
+      <td>${o.customer_name || '—'}</td>
+      <td>${o.customer_phone || '—'}</td>
+      <td class="items-cell">
+        ${(o.items || []).map(i => `${i.name}×${i.quantity}`).join(', ') || '—'}
+      </td>
+      <td>$${o.total}</td>
+      <td><span class="status-badge ${statusClass[o.status]}">${statusMap[o.status] || o.status}</span></td>
+      <td>${fmt(o.created_at)}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" data-order-id="${o.id}">詳情</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+$('statusFilter').addEventListener('click', e => {
+  const btn = e.target.closest('.filter-tab');
+  if (!btn) return;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  loadOrders(btn.dataset.status);
+});
+
+$('btnRefreshOrders').addEventListener('click', () => loadOrders(currentStatus));
+
+// ─── 訂單詳情 ───────────────────────────────────────────────────
+$('ordersTbody').addEventListener('click', e => {
+  const btn = e.target.closest('[data-order-id]');
+  if (!btn) return;
+  openOrderDetail(parseInt(btn.dataset.orderId));
+});
+
+async function openOrderDetail(id) {
+  $('odOrderId').textContent = id;
+  $('odError').classList.add('hidden');
+  $('orderDetailModal').classList.remove('hidden');
+  try {
+    const o = await apiFetch(`/api/orders/${id}`);
+    $('odDetail').innerHTML = `
+      <div class="detail-item"><span class="detail-label">顧客姓名</span><span>${o.customer_name || '—'}</span></div>
+      <div class="detail-item"><span class="detail-label">電話</span><span>${o.customer_phone || '—'}</span></div>
+      <div class="detail-item"><span class="detail-label">訂單狀態</span><span class="status-badge ${statusClass[o.status]}">${statusMap[o.status] || o.status}</span></div>
+      <div class="detail-item"><span class="detail-label">建立時間</span><span>${fmt(o.created_at)}</span></div>
+      <div class="detail-item"><span class="detail-label">小計</span><span>$${o.subtotal}</span></div>
+      ${o.redeem_points ? `<div class="detail-item"><span class="detail-label">折抵點數</span><span>${o.redeem_points} 點（$${o.redeem_points}）</span></div>` : ''}
+      <div class="detail-item"><span class="detail-label">實付金額</span><span><strong>$${o.total}</strong></span></div>
+      ${o.points_earned ? `<div class="detail-item"><span class="detail-label">累積點數</span><span>${o.points_earned} 點</span></div>` : ''}
+      <div class="detail-item full"><span class="detail-label">品項</span>
+        <ul class="detail-items-list">${(o.items || []).map(i => `<li>${i.name} × ${i.quantity} — $${i.price}</li>`).join('')}</ul>
+      </div>
+      ${o.notes ? `<div class="detail-item full"><span class="detail-label">備註</span><span>${o.notes}</span></div>` : ''}
+    `;
+    $('odNewStatus').value = o.status;
+    $('odNewStatus').dataset.orderId = id;
+  } catch {
+    $('odDetail').innerHTML = '<p class="error-state">載入失敗</p>';
+  }
+}
+
+$('btnUpdateStatus')?.addEventListener('click', async () => {
+  const id = $('odNewStatus').dataset.orderId;
+  const status = $('odNewStatus').value;
+  $('odError').classList.add('hidden');
+  try {
+    await apiFetch(`/api/admin/orders/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
+    toast('狀態已更新');
+    $('orderDetailModal').classList.add('hidden');
+    loadOrders(currentStatus);
+  } catch (err) {
+    $('odError').textContent = err.message;
+    $('odError').classList.remove('hidden');
+  }
+});
+
+$('odClose')?.addEventListener('click', () => $('orderDetailModal').classList.add('hidden'));
+
+// ─── 日報表 ──────────────────────────────────────────────────────
+$('btnLoadReport')?.addEventListener('click', async () => {
+  const date = $('reportDate').value;
+  if (!date) { toast('請選擇日期'); return; }
+  $('reportContent').innerHTML = '<div class="loading-state">查詢中…</div>';
+  try {
+    const r = await apiFetch(`/api/reports/daily?date=${date}`);
+    $('reportContent').innerHTML = `
+      <div class="report-date-title">${r.date} 日報表</div>
+      <div class="report-stats">
+        <div class="report-stat">
+          <span class="report-stat-value">${r.total_orders}</span>
+          <span class="report-stat-label">總訂單</span>
+        </div>
+        <div class="report-stat">
+          <span class="report-stat-value">$${r.total_revenue}</span>
+          <span class="report-stat-label">總營收</span>
+        </div>
+      </div>
+      <div class="report-status-grid">
+        <div class="report-status-item"><span>已完成</span><strong>${r.by_status?.completed || 0}</strong></div>
+        <div class="report-status-item"><span>等待中</span><strong>${r.by_status?.pending || 0}</strong></div>
+        <div class="report-status-item"><span>製作中</span><strong>${r.by_status?.preparing || 0}</strong></div>
+        <div class="report-status-item"><span>已取消</span><strong>${r.by_status?.cancelled || 0}</strong></div>
+      </div>
+      ${r.top_items && r.top_items.length > 0 ? `
+        <div class="report-top-items">
+          <h4>熱銷品項</h4>
+          <ul>${r.top_items.map(i => `<li>${i.name} — ${i.count} 份</li>`).join('')}</ul>
+        </div>
+      ` : ''}
+    `;
+  } catch {
+    $('reportContent').innerHTML = '<p class="error-state">查詢失敗</p>';
+  }
+});
+
+// ─── 會員 ───────────────────────────────────────────────────────
+async function loadMembers(phone = '') {
+  $('membersTbody').innerHTML = '<tr><td colspan="6" class="loading-state">載入中…</td></tr>';
+  try {
+    const url = phone ? `/api/admin/members?phone=${encodeURIComponent(phone)}` : '/api/admin/members';
+    const { members } = await apiFetch(url);
+    renderMembers(members || []);
+  } catch {
+    $('membersTbody').innerHTML = '<tr><td colspan="6" class="error-state">載入失敗</td></tr>';
+  }
+}
+
+function renderMembers(members) {
+  if (members.length === 0) {
+    $('membersTbody').innerHTML = '<tr><td colspan="6" class="empty-state">找不到會員</td></tr>';
+    return;
+  }
+  $('membersTbody').innerHTML = members.map(m => `
+    <tr>
+      <td>${m.id}</td>
+      <td>${m.name}</td>
+      <td>${m.phone}</td>
+      <td><span class="points-badge">${m.points} 點</span></td>
+      <td>${fmt(m.created_at)}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" data-member-id="${m.id}">詳情</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+$('btnSearchMember')?.addEventListener('click', () => {
+  loadMembers($('memberSearchInput').value.trim());
+});
+
+$('btnListAllMembers')?.addEventListener('click', () => {
+  $('memberSearchInput').value = '';
+  loadMembers();
+});
+
+$('membersTbody').addEventListener('click', e => {
+  const btn = e.target.closest('[data-member-id]');
+  if (!btn) return;
+  openMemberDetail(parseInt(btn.dataset.memberId));
+});
+
+async function openMemberDetail(id) {
+  currentMemberId = id;
+  $('memberDetailModal').classList.remove('hidden');
+  $('adjError').classList.add('hidden');
+  try {
+    const m = await apiFetch(`/api/admin/members/${id}`);
+    $('memberDetail').innerHTML = `
+      <div class="member-info-row">
+        <span><strong>${m.name}</strong></span>
+        <span>${m.phone}</span>
+        <span class="points-badge">${m.points} 點</span>
+        <span class="text-muted">註冊：${fmt(m.created_at)}</span>
+      </div>
+      <div class="member-section-title">消費紀錄</div>
+      <div class="member-orders-list">
+        ${(m.orders || []).map(o => `
+          <div class="member-order-item">
+            <span>訂單 #${o.id} — $${o.total}</span>
+            <span class="status-badge ${statusClass[o.status]}">${statusMap[o.status] || o.status}</span>
+            ${o.redeem_points ? `<span class="text-muted">折抵 ${o.redeem_points} 點</span>` : ''}
+            <span class="text-muted">${fmt(o.created_at)}</span>
+          </div>
+        `).join('') || '<p class="text-muted">尚無消費紀錄</p>'}
+      </div>
+      <div class="member-section-title">點數歷史</div>
+      <div class="member-points-history">
+        ${(m.point_history || []).map(h => `
+          <div class="ph-item ${h.type === 'redeem' ? 'ph-redeem' : 'ph-earn'}">
+            <span class="ph-type">${h.type === 'earn' ? '累積' : h.type === 'redeem' ? '折抵' : '調整'}</span>
+            <span class="ph-pts">${h.points > 0 ? '+' : ''}${h.points}</span>
+            <span class="ph-desc">${h.description || ''}</span>
+            <span class="ph-date">${fmt(h.created_at)}</span>
+          </div>
+        `).join('') || '<p class="text-muted">尚無點數紀錄</p>'}
+      </div>
+    `;
+  } catch {
+    $('memberDetail').innerHTML = '<p class="error-state">載入失敗</p>';
+  }
+}
+
+$('memberDetailClose')?.addEventListener('click', () => $('memberDetailModal').classList.add('hidden'));
+
+$('btnAdjustPoints')?.addEventListener('click', async () => {
+  const adjustment = parseInt($('adjPoints').value);
+  const reason = $('adjReason').value.trim();
+  $('adjError').classList.add('hidden');
+  if (isNaN(adjustment)) { $('adjError').textContent = '請輸入正確的數字'; $('adjError').classList.remove('hidden'); return; }
+  try {
+    const res = await apiFetch(`/api/admin/members/${currentMemberId}/points`, {
+      method: 'PUT', body: JSON.stringify({ adjustment, reason })
+    });
+    toast(`點數已調整：${res.previous_points} → ${res.new_points}`);
+    $('adjPoints').value = '';
+    $('adjReason').value = '';
+    openMemberDetail(currentMemberId);
+  } catch (err) {
+    $('adjError').textContent = err.message;
+    $('adjError').classList.remove('hidden');
+  }
+});
+
+// ─── 管理者登出 ────────────────────────────────────────────────
+$('btnAdminLogout')?.addEventListener('click', async () => {
+  await fetch('/admin/logout', { method: 'POST' }).catch(() => {});
+  window.location.href = '/admin/login';
+});
+
+// ─── Modal 關閉 ────────────────────────────────────────────────
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.add('hidden'); });
+});
+
+// ─── 響應式漢堡 ─────────────────────────────────────────────────
+const hamburger = document.createElement('button');
+hamburger.className = 'hamburger';
+hamburger.setAttribute('aria-label', '選單');
+hamburger.innerHTML = '<span></span><span></span><span></span>';
+hamburger.addEventListener('click', () => {
+  document.querySelector('.admin-sidebar').classList.toggle('sidebar-open');
+});
+
+// ─── 初始化 ─────────────────────────────────────────────────────
+loadOrders();
+</script>
+</body>
+</html>

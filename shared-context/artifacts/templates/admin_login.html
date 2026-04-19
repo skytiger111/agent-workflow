@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理者登入 - 點餐系統</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    background: #faf7f2;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .login-box {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 400px;
+    margin: 16px;
+  }
+  .login-logo { text-align: center; margin-bottom: 28px; }
+  .login-logo-icon { font-size: 2.8rem; display: block; margin-bottom: 8px; }
+  .login-logo-title { font-size: 1.3rem; font-weight: bold; color: #3d2b1f; }
+  .login-logo-sub { font-size: 0.82rem; color: #a08070; margin-top: 4px; }
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 0.85rem; color: #6d5344; margin-bottom: 6px; font-weight: 500; }
+  .form-control {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid #d8cec4;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: #fff;
+    color: #3d2b1f;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-control:focus { border-color: #c0622a; box-shadow: 0 0 0 3px rgba(192,98,42,0.1); }
+  .btn-primary {
+    width: 100%;
+    padding: 12px;
+    background: #3d2b1f;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-top: 8px;
+  }
+  .btn-primary:hover { background: #5a3e2b; }
+  .flash-error {
+    background: #fbe9e7;
+    color: #c62828;
+    border: 1px solid #ef9a9a;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+    display: none;
+  }
+  .flash-error.show { display: block; }
+  .back-link {
+    display: block;
+    text-align: center;
+    margin-top: 20px;
+    font-size: 0.85rem;
+    color: #a08070;
+  }
+  .back-link:hover { color: #c0622a; }
+</style>
+</head>
+<body>
+<div class="login-box">
+  <div class="login-logo">
+    <span class="login-logo-icon">🍜</span>
+    <div class="login-logo-title">點餐系統管理後台</div>
+    <div class="login-logo-sub">管理者帳號登入</div>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="flash-error show">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <form method="POST" action="/admin/login">
+    <div class="form-group">
+      <label class="form-label" for="username">帳號</label>
+      <input
+        type="text"
+        class="form-control"
+        id="username"
+        name="username"
+        placeholder="請輸入管理者帳號"
+        required
+        autofocus
+      >
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="password">密碼</label>
+      <input
+        type="password"
+        class="form-control"
+        id="password"
+        name="password"
+        placeholder="請輸入密碼"
+        required
+      >
+    </div>
+    <button type="submit" class="btn-primary">登入</button>
+  </form>
+
+  <a href="/" class="back-link">← 返回前台首頁</a>
+</div>
+</body>
+</html>

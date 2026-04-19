@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>點餐系統</title>
+<style>
+  /* ── 重置與基礎 ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    background: #faf7f2;
+    color: #3d2b1f;
+    min-height: 100vh;
+  }
+  a { color: #c0622a; text-decoration: none; }
+  a:hover { color: #a04e1e; }
+
+  /* ── 頂部導覽列 ── */
+  .topbar {
+    background: #3d2b1f;
+    color: #fff;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .topbar-brand {
+    font-size: 1.2rem;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+    color: #f5c842;
+  }
+  .topbar-admin {
+    font-size: 0.85rem;
+    color: #ccc;
+    border: 1px solid #555;
+    padding: 4px 12px;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+  .topbar-admin:hover { background: #555; color: #fff; border-color: #555; }
+
+  /* ── Tab 容器 ── */
+  .tab-nav {
+    display: flex;
+    background: #fff;
+    border-bottom: 2px solid #e8dfd3;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tab-nav::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 12px 8px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #8a7060;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .tab-btn:hover { color: #c0622a; background: #fdf5ee; }
+  .tab-btn.active {
+    color: #c0622a;
+    border-bottom-color: #c0622a;
+    background: #fdf5ee;
+  }
+  .tab-badge {
+    display: inline-block;
+    background: #c0622a;
+    color: #fff;
+    font-size: 0.7rem;
+    border-radius: 10px;
+    padding: 1px 6px;
+    margin-left: 4px;
+    vertical-align: top;
+    line-height: 1.4;
+  }
+
+  /* ── Tab 內容區 ── */
+  .tab-content { display: none; padding: 20px 16px 40px; max-width: 640px; margin: 0 auto; }
+  .tab-content.active { display: block; }
+
+  /* ── 通用卡片 ── */
+  .card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .card-title { font-size: 1rem; font-weight: bold; color: #3d2b1f; margin-bottom: 4px; }
+
+  /* ── 訊息提示 ── */
+  .msg {
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+    display: none;
+  }
+  .msg.show { display: block; }
+  .msg.success { background: #e8f5e1; color: #2e7d32; border: 1px solid #a5d6a7; }
+  .msg.error   { background: #fbe9e7; color: #c62828; border: 1px solid #ef9a9a; }
+  .msg.info    { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
+
+  /* ── 表單 ── */
+  .form-group { margin-bottom: 12px; }
+  .form-label { display: block; font-size: 0.85rem; color: #6d5344; margin-bottom: 4px; font-weight: 500; }
+  .form-control {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid #d8cec4;
+    border-radius: 7px;
+    font-size: 0.95rem;
+    background: #fff;
+    color: #3d2b1f;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  .form-control:focus { border-color: #c0622a; box-shadow: 0 0 0 3px rgba(192,98,42,0.1); }
+  .btn {
+    display: inline-block;
+    padding: 9px 20px;
+    border: none;
+    border-radius: 7px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .btn-primary { background: #c0622a; color: #fff; width: 100%; }
+  .btn-primary:hover { background: #a04e1e; }
+  .btn-secondary { background: #e8dfd3; color: #5a3e2b; }
+  .btn-secondary:hover { background: #d8cec4; }
+  .btn-sm { padding: 5px 12px; font-size: 0.82rem; }
+  .btn-danger { background: #ef5350; color: #fff; }
+  .btn-danger:hover { background: #c62828; }
+  .btn-success { background: #43a047; color: #fff; }
+  .btn-success:hover { background: #2e7d32; }
+
+  /* ── 品項卡片 ── */
+  .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .menu-item {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .menu-item-body { padding: 12px; flex: 1; }
+  .menu-item-name { font-weight: bold; font-size: 0.95rem; color: #3d2b1f; margin-bottom: 4px; }
+  .menu-item-cat  { font-size: 0.75rem; color: #a08070; margin-bottom: 6px; }
+  .menu-item-price { font-size: 1.05rem; color: #c0622a; font-weight: bold; }
+  .menu-item-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-top: 1px solid #f0ebe4;
+    background: #fdf9f6;
+  }
+  .qty-btn {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 1.5px solid #c0622a;
+    background: #fff;
+    color: #c0622a;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .qty-btn:hover { background: #c0622a; color: #fff; }
+  .qty-num { font-weight: bold; min-width: 20px; text-align: center; font-size: 0.95rem; }
+  .add-btn {
+    flex: 1;
+    padding: 6px 0;
+    background: #f5c842;
+    color: #5a3e2b;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .add-btn:hover { background: #e8b020; }
+  .add-btn:disabled { background: #e0d8d0; color: #a09080; cursor: not-allowed; }
+
+  /* ── 購物車 ── */
+  .cart-empty { text-align: center; padding: 48px 0; color: #a08070; }
+  .cart-empty-icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.5; }
+  .cart-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0ebe4;
+  }
+  .cart-item:last-child { border-bottom: none; }
+  .cart-item-info { flex: 1; min-width: 0; }
+  .cart-item-name { font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cart-item-price { font-size: 0.82rem; color: #a08070; }
+  .cart-summary {
+    background: #fdf5ee;
+    border-radius: 8px;
+    padding: 14px;
+    margin-top: 12px;
+  }
+  .cart-summary-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.9rem; }
+  .cart-summary-row.total { font-weight: bold; font-size: 1.05rem; color: #c0622a; border-top: 1px dashed #d8cec4; padding-top: 8px; margin-top: 4px; }
+  .cart-summary-row.earn { color: #43a047; font-size: 0.85rem; }
+
+  /* ── 訂單列表 ── */
+  .order-card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    padding: 14px;
+    margin-bottom: 12px;
+    border-left: 4px solid #d8cec4;
+  }
+  .order-card.pending    { border-left-color: #f5c842; }
+  .order-card.preparing  { border-left-color: #42a5f5; }
+  .order-card.completed  { border-left-color: #43a047; }
+  .order-card.cancelled  { border-left-color: #bdbdbd; }
+  .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .order-id { font-weight: bold; font-size: 0.9rem; }
+  .order-status {
+    font-size: 0.78rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+  .status-pending   { background: #fff8e1; color: #f57f17; }
+  .status-preparing { background: #e3f2fd; color: #1565c0; }
+  .status-completed { background: #e8f5e1; color: #2e7d32; }
+  .status-cancelled { background: #f5f5f5; color: #757575; }
+  .order-items { font-size: 0.85rem; color: #6d5344; margin-bottom: 8px; }
+  .order-item-line { padding: 2px 0; }
+  .order-footer { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #8a7060; }
+
+  /* ── 會員專區 ── */
+  .member-info {
+    background: linear-gradient(135deg, #3d2b1f, #6d4c41);
+    color: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .member-points {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #f5c842;
+    line-height: 1.2;
+  }
+  .member-points-label { font-size: 0.85rem; color: #d7cec4; margin-top: 2px; }
+  .member-name { font-size: 1.1rem; font-weight: 600; margin-bottom: 4px; }
+  .member-phone { font-size: 0.82rem; color: #b0a090; }
+  .points-history { margin-top: 8px; }
+  .points-history-title { font-size: 0.85rem; color: #a08070; margin-bottom: 8px; font-weight: 500; }
+  .points-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0ebe4;
+    font-size: 0.85rem;
+  }
+  .points-row:last-child { border-bottom: none; }
+  .points-desc { color: #6d5344; flex: 1; }
+  .points-amount { font-weight: bold; }
+  .points-amount.earn { color: #43a047; }
+  .points-amount.redeem { color: #c62828; }
+  .points-amount.adjust { color: #1565c0; }
+  .points-date { font-size: 0.75rem; color: #a08070; margin-top: 2px; }
+
+  /* ── 分隔線 ── */
+  .divider { height: 1px; background: #e8dfd3; margin: 16px 0; }
+
+  /* ── 折抵點數 ── */
+  .redeem-section {
+    background: #fffde7;
+    border: 1px solid #f9e79f;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  .redeem-section-title { font-size: 0.85rem; font-weight: bold; color: #7d6000; margin-bottom: 8px; }
+  .redeem-input-row { display: flex; gap: 8px; align-items: center; }
+  .redeem-hint { font-size: 0.78rem; color: #7d6000; margin-top: 4px; }
+
+  /* ── 分類篩選 ── */
+  .category-filter {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    margin-bottom: 16px;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+  .category-filter::-webkit-scrollbar { display: none; }
+  .cat-chip {
+    padding: 4px 14px;
+    border-radius: 20px;
+    border: 1.5px solid #d8cec4;
+    background: #fff;
+    color: #6d5344;
+    font-size: 0.82rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .cat-chip:hover { border-color: #c0622a; color: #c0622a; }
+  .cat-chip.active { background: #c0622a; border-color: #c0622a; color: #fff; }
+
+  /* ── 登入表單 ── */
+  .auth-box { max-width: 400px; margin: 0 auto; }
+  .auth-tabs { display: flex; border-bottom: 2px solid #e8dfd3; margin-bottom: 20px; }
+  .auth-tab {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    color: #8a7060;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+  }
+  .auth-tab.active { color: #c0622a; border-bottom-color: #c0622a; }
+  .auth-form { display: none; }
+  .auth-form.active { display: block; }
+
+  /* ── 載入動畫 ── */
+  .loading { text-align: center; padding: 32px; color: #a08070; font-size: 0.9rem; }
+  .spinner {
+    display: inline-block;
+    width: 24px; height: 24px;
+    border: 3px solid #e8dfd3;
+    border-top-color: #c0622a;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── 無法使用提示 ── */
+  .unavailable-badge {
+    background: #eeeeee;
+    color: #9e9e9e;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+  }
+
+  /* ── 手機適配 ── */
+  @media (max-width: 480px) {
+    .menu-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .topbar { padding: 0 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ 頂部導覽列 ══════════════ -->
+<nav class="topbar">
+  <span class="topbar-brand">🍜 點餐系統</span>
+  <a href="/admin/login" class="topbar-admin">管理後台</a>
+</nav>
+
+<!-- ══════════════ Tab 導覽 ══════════════ -->
+<div class="tab-nav">
+  <button class="tab-btn active" data-tab="menu">菜單</button>
+  <button class="tab-btn" data-tab="cart">
+    購物車<span class="tab-badge" id="cart-count" style="display:none">0</span>
+  </button>
+  <button class="tab-btn" data-tab="orders">我的訂單</button>
+  <button class="tab-btn" data-tab="member">會員專區</button>
+</div>
+
+<!-- ══════════════ 訊息提示 ══════════════ -->
+<div id="msg-success" class="msg success"></div>
+<div id="msg-error"   class="msg error"></div>
+<div id="msg-info"    class="msg info"></div>
+
+<!-- ══════════════════════════════════════════
+     Tab 1：菜單
+═══════════════════════════════════════════ -->
+<div id="menu" class="tab-content active">
+  <div class="category-filter" id="cat-filter"></div>
+  <div id="menu-loading" class="loading"><span class="spinner"></span>載入菜單中…</div>
+  <div class="menu-grid" id="menu-grid"></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     Tab 2：購物車
+═══════════════════════════════════════════ -->
+<div id="cart" class="tab-content">
+  <div id="cart-empty" class="cart-empty">
+    <div class="cart-empty-icon">🛒</div>
+    <div>購物車是空的</div>
+    <div style="font-size:0.85rem;margin-top:6px;color:#a08070">快去挑選喜歡的餐點吧！</div>
+    <button class="btn btn-secondary" style="margin-top:16px" onclick="switchTab('menu')">查看菜單</button>
+  </div>
+  <div id="cart-body" style="display:none">
+    <!-- 折抵區塊（會員顯示） -->
+    <div class="redeem-section" id="redeem-section" style="display:none">
+      <div class="redeem-section-title">可用點數折抵</div>
+      <div class="redeem-input-row">
+        <input type="number" class="form-control" id="redeem-input" placeholder="輸入折抵點數" min="0" style="flex:1">
+        <button class="btn btn-secondary btn-sm" id="redeem-max-btn">全用</button>
+      </div>
+      <div class="redeem-hint" id="redeem-hint"></div>
+    </div>
+
+    <div id="cart-items-list"></div>
+
+    <div class="cart-summary" id="cart-summary"></div>
+
+    <div class="divider"></div>
+
+    <!-- 顧客資料 -->
+    <div class="card">
+      <div class="card-title">顧客資料</div>
+      <div class="form-group">
+        <label class="form-label">姓名 *</label>
+        <input type="text" class="form-control" id="cust-name" placeholder="請輸入姓名">
+      </div>
+      <div class="form-group">
+        <label class="form-label">電話 *</label>
+        <input type="tel" class="form-control" id="cust-phone" placeholder="0912345678" maxlength="10">
+      </div>
+      <div class="form-group">
+        <label class="form-label">備註</label>
+        <input type="text" class="form-control" id="cust-notes" placeholder="不要蔥、不要辣…">
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="checkout-btn" onclick="doCheckout()">
+      送出訂單
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     Tab 3：我的訂單
+═══════════════════════════════════════════ -->
+<div id="orders" class="tab-content">
+  <div id="orders-loading" class="loading"><span class="spinner"></span>載入訂單中…</div>
+  <div id="orders-list"></div>
+  <div id="orders-empty" style="display:none;text-align:center;padding:48px 0;color:#a08070">
+    <div style="font-size:3rem;opacity:0.5;margin-bottom:12px">📋</div>
+    <div>尚無訂單記錄</div>
+    <button class="btn btn-secondary" style="margin-top:16px" onclick="switchTab('menu')">開始點餐</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     Tab 4：會員專區
+═══════════════════════════════════════════ -->
+<div id="member" class="tab-content">
+  <!-- 未登入：顯示登入/註冊表單 -->
+  <div id="member-auth" class="auth-box">
+    <div class="auth-tabs">
+      <div class="auth-tab active" data-auth="login">登入</div>
+      <div class="auth-tab" data-auth="register">註冊</div>
+    </div>
+    <!-- 登入表單 -->
+    <form class="auth-form active" id="login-form" onsubmit="return memberLogin(event)">
+      <div class="form-group">
+        <label class="form-label">電話</label>
+        <input type="tel" class="form-control" id="login-phone" placeholder="0912345678" maxlength="10" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">密碼</label>
+        <input type="password" class="form-control" id="login-password" placeholder="請輸入密碼" required>
+      </div>
+      <button type="submit" class="btn btn-primary">會員登入</button>
+    </form>
+    <!-- 註冊表單 -->
+    <form class="auth-form" id="register-form" onsubmit="return memberRegister(event)">
+      <div class="form-group">
+        <label class="form-label">姓名 *</label>
+        <input type="text" class="form-control" id="reg-name" placeholder="王小明" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">電話 *</label>
+        <input type="tel" class="form-control" id="reg-phone" placeholder="0912345678" maxlength="10" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">密碼 *</label>
+        <input type="password" class="form-control" id="reg-password" placeholder="請設定密碼（至少4字）" required minlength="4">
+      </div>
+      <button type="submit" class="btn btn-primary">註冊會員</button>
+    </form>
+    <div class="msg error" id="auth-error"></div>
+  </div>
+
+  <!-- 已登入：顯示會員資訊 -->
+  <div id="member-loggedin" style="display:none">
+    <div class="member-info">
+      <div class="member-name" id="m-name"></div>
+      <div class="member-phone" id="m-phone"></div>
+      <div style="margin:12px 0">
+        <div class="member-points" id="m-points">0</div>
+        <div class="member-points-label">可用點數</div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="memberLogout()">登出</button>
+    </div>
+
+    <div class="card">
+      <div class="points-history-title">點數紀錄</div>
+      <div id="points-history">
+        <div class="loading"><span class="spinner"></span>載入中…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     訂單詳情 Modal
+═══════════════════════════════════════════ -->
+<div id="order-modal" style="display:none;position:fixed;inset:0;z-index:200;
+     background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:12px;padding:20px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-weight:bold;font-size:1.05rem">訂單詳情</div>
+      <button onclick="closeOrderModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#a08070">✕</button>
+    </div>
+    <div id="order-modal-body"></div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   全域狀態
+═══════════════════════════════════════════ */
+let menuItems = [];
+let cart = {};          // { itemId: { name, price, quantity } }
+let memberPoints = 0;   // 登入會員可用點數
+let currentMember = null; // { id, name, phone, points }
+let currentCategory = '全部';
+
+/* ═══════════════════════════════════════════
+   Tab 切換
+═══════════════════════════════════════════ */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    switchTab(tab);
+  });
+});
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === tab));
+  if (tab === 'orders') loadOrders();
+  if (tab === 'member') loadMemberStatus();
+  if (tab === 'menu' && menuItems.length === 0) loadMenu();
+}
+
+/* ═══════════════════════════════════════════
+   訊息提示
+═══════════════════════════════════════════ */
+function showMsg(type, text) {
+  const el = document.getElementById('msg-' + type);
+  el.textContent = text;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 4000);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ═══════════════════════════════════════════
+   API 工具
+═══════════════════════════════════════════ */
+async function api(url, opts = {}) {
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json', ...opts.headers },
+    ...opts,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || '請求失敗');
+  return data;
+}
+
+/* ═══════════════════════════════════════════
+   Tab 1：菜單
+═══════════════════════════════════════════ */
+async function loadMenu() {
+  try {
+    const data = await api('/api/menu');
+    menuItems = data.menu || [];
+    renderCategories();
+    renderMenu();
+    document.getElementById('menu-loading').style.display = 'none';
+  } catch (e) {
+    document.getElementById('menu-loading').textContent = '載入失敗：' + e.message;
+  }
+}
+
+function renderCategories() {
+  const cats = ['全部', ...new Set(menuItems.map(i => i.category || '未分類'))];
+  const container = document.getElementById('cat-filter');
+  container.innerHTML = cats.map(c =>
+    `<button class="cat-chip${c === currentCategory ? ' active' : ''}" onclick="filterCategory('${c}')">${c}</button>`
+  ).join('');
+}
+
+function filterCategory(cat) {
+  currentCategory = cat;
+  renderCategories();
+  renderMenu();
+}
+
+function renderMenu() {
+  const filtered = currentCategory === '全部' || currentCategory === ''
+    ? menuItems
+    : menuItems.filter(i => (i.category || '未分類') === currentCategory);
+
+  const grid = document.getElementById('menu-grid');
+  grid.innerHTML = filtered.map(item => {
+    const inCart = cart[item.id] ? cart[item.id].quantity : 0;
+    const unavailable = !item.available;
+    return `
+    <div class="menu-item">
+      <div class="menu-item-body">
+        <div class="menu-item-name">
+          ${item.name}
+          ${unavailable ? '<span class="unavailable-badge">已售完</span>' : ''}
+        </div>
+        <div class="menu-item-cat">${item.category || '未分類'}</div>
+        <div class="menu-item-price">$${item.price}</div>
+      </div>
+      <div class="menu-item-footer">
+        <button class="qty-btn" onclick="changeQty(${item.id}, -1)" ${unavailable ? 'disabled' : ''}>−</button>
+        <span class="qty-num">${inCart}</span>
+        <button class="qty-btn" onclick="changeQty(${item.id}, 1)" ${unavailable ? 'disabled' : ''}>+</button>
+        <button class="add-btn" onclick="addToCart(${item.id})" ${unavailable ? 'disabled' : ''}>
+          ${inCart > 0 ? '再加一份' : '加入'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function changeQty(id, delta) {
+  const current = cart[id] ? cart[id].quantity : 0;
+  const newQty = current + delta;
+  if (newQty <= 0) {
+    delete cart[id];
+  } else {
+    const item = menuItems.find(i => i.id === id);
+    if (item && item.available) {
+      cart[id] = { name: item.name, price: item.price, quantity: newQty };
+    }
+  }
+  renderMenu();
+  updateCartBadge();
+}
+
+function addToCart(id) {
+  const item = menuItems.find(i => i.id === id);
+  if (!item || !item.available) return;
+  if (!cart[id]) {
+    cart[id] = { name: item.name, price: item.price, quantity: 1 };
+  } else {
+    cart[id].quantity++;
+  }
+  renderMenu();
+  updateCartBadge();
+  showMsg('success', `"${item.name}" 已加入購物車`);
+}
+
+function updateCartBadge() {
+  const total = Object.values(cart).reduce((s, i) => s + i.quantity, 0);
+  const badge = document.getElementById('cart-count');
+  if (total > 0) {
+    badge.textContent = total;
+    badge.style.display = 'inline-block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+/* ═══════════════════════════════════════════
+   Tab 2：購物車
+═══════════════════════════════════════════ */
+function renderCart() {
+  const entries = Object.entries(cart);
+  const empty = document.getElementById('cart-empty');
+  const body   = document.getElementById('cart-body');
+
+  if (entries.length === 0) {
+    empty.style.display = 'block';
+    body.style.display   = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  body.style.display   = 'block';
+
+  // 顯示折抵區塊（會員才能折抵）
+  const redeemSection = document.getElementById('redeem-section');
+  if (currentMember) {
+    redeemSection.style.display = 'block';
+    document.getElementById('redeem-hint').textContent =
+      `本次可折抵上限：${getMaxRedeem()} 點`;
+  } else {
+    redeemSection.style.display = 'none';
+  }
+
+  // 品項列表
+  const list = document.getElementById('cart-items-list');
+  list.innerHTML = entries.map(([id, item]) => `
+    <div class="cart-item">
+      <div class="cart-item-info">
+        <div class="cart-item-name">${item.name}</div>
+        <div class="cart-item-price">$${item.price} × ${item.quantity}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="qty-btn" onclick="cartChangeQty(${id},-1)">−</button>
+        <span class="qty-num">${item.quantity}</span>
+        <button class="qty-btn" onclick="cartChangeQty(${id},1)">+</button>
+      </div>
+      <div style="min-width:48px;text-align:right;font-weight:bold;color:#c0622a">
+        $${item.price * item.quantity}
+      </div>
+    </div>`).join('');
+
+  // 摘要
+  const subtotal = entries.reduce((s, [, i]) => s + i.price * i.quantity, 0);
+  const redeemVal = parseInt(document.getElementById('redeem-input').value) || 0;
+  const redeemAmt = currentMember ? Math.min(redeemVal, getMaxRedeem()) : 0;
+  const total     = subtotal - redeemAmt;
+  const earned    = subtotal; // 累積點數以 subtotal 計算
+
+  document.getElementById('cart-summary').innerHTML = `
+    <div class="cart-summary-row">
+      <span>小計</span><span>$${subtotal}</span>
+    </div>
+    ${currentMember && redeemAmt > 0 ? `
+    <div class="cart-summary-row">
+      <span>點數折抵</span><span style="color:#c62828">-$${redeemAmt}</span>
+    </div>` : ''}
+    <div class="cart-summary-row total">
+      <span>實付金額</span><span>$${total}</span>
+    </div>
+    ${currentMember ? `
+    <div class="cart-summary-row earn">
+      <span>消費累積</span><span>+${earned} 點</span>
+    </div>` : ''}
+  `;
+}
+
+function cartChangeQty(id, delta) {
+  if (!cart[id]) return;
+  cart[id].quantity += delta;
+  if (cart[id].quantity <= 0) delete cart[id];
+  renderMenu();
+  updateCartBadge();
+  renderCart();
+}
+
+function getMaxRedeem() {
+  if (!currentMember) return 0;
+  const subtotal = Object.entries(cart).reduce((s, [, i]) => s + i.price * i.quantity, 0);
+  return Math.min(currentMember.points, subtotal);
+}
+
+document.getElementById('redeem-max-btn').addEventListener('click', () => {
+  document.getElementById('redeem-input').value = getMaxRedeem();
+  renderCart();
+});
+document.getElementById('redeem-input').addEventListener('input', renderCart);
+
+/* ── 結帳 ── */
+async function doCheckout() {
+  const entries = Object.entries(cart);
+  if (entries.length === 0) { showMsg('error', '購物車是空的'); return; }
+
+  const name  = document.getElementById('cust-name').value.trim();
+  const phone = document.getElementById('cust-phone').value.trim();
+  const notes = document.getElementById('cust-notes').value.trim();
+  if (!name || !phone) { showMsg('error', '姓名與電話為必填'); return; }
+
+  const items = entries.map(([id, item]) => ({ id: parseInt(id), quantity: item.quantity }));
+  const redeem_points = currentMember
+    ? parseInt(document.getElementById('redeem-input').value) || 0
+    : 0;
+
+  const btn = document.getElementById('checkout-btn');
+  btn.disabled = true;
+  btn.textContent = '處理中…';
+
+  try {
+    const res = await api('/api/checkout', {
+      method: 'POST',
+      body: JSON.stringify({ items, customer_name: name, customer_phone: phone, notes, redeem_points }),
+    });
+
+    // 清空購物車
+    cart = {};
+    updateCartBadge();
+    document.getElementById('cust-name').value  = '';
+    document.getElementById('cust-phone').value  = '';
+    document.getElementById('cust-notes').value  = '';
+    document.getElementById('redeem-input').value = '';
+
+    // 更新會員點數
+    if (currentMember && res.remaining_points !== null) {
+      currentMember.points = res.remaining_points;
+      document.getElementById('m-points').textContent = res.remaining_points;
+    }
+
+    showMsg('success', `訂單 #${res.order_id} 已送出！實付 $${res.total}，累積 ${res.points_earned} 點`);
+    switchTab('orders');
+  } catch (e) {
+    showMsg('error', e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '送出訂單';
+  }
+}
+
+/* ═══════════════════════════════════════════
+   Tab 3：我的訂單
+═══════════════════════════════════════════ */
+async function loadOrders() {
+  const loading = document.getElementById('orders-loading');
+  const list     = document.getElementById('orders-list');
+  const empty    = document.getElementById('orders-empty');
+
+  loading.style.display = 'block';
+  list.style.display    = 'none';
+  empty.style.display   = 'none';
+
+  try {
+    const data = await api('/api/orders');
+    const orders = data.orders || [];
+    loading.style.display = 'none';
+
+    if (orders.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
+    list.style.display = 'block';
+    list.innerHTML = orders.map(order => `
+      <div class="order-card ${order.status}" style="cursor:pointer" onclick="showOrderDetail(${order.id})">
+        <div class="order-header">
+          <span class="order-id">訂單 #${order.id}</span>
+          <span class="order-status status-${order.status}">${statusLabel(order.status)}</span>
+        </div>
+        <div class="order-items">
+          ${(order.items || []).map(i =>
+            `<div class="order-item-line">${i.name} × ${i.quantity}　$${i.price * i.quantity}</div>`
+          ).join('')}
+        </div>
+        <div class="order-footer">
+          <span>${formatDate(order.created_at)}</span>
+          <span style="font-weight:bold;color:#c0622a">$${order.total}</span>
+        </div>
+        ${order.redeem_points > 0 ? `
+        <div style="font-size:0.78rem;color:#43a047;margin-top:4px">
+          已折抵 ${order.redeem_points} 點
+        </div>` : ''}
+      </div>`).join('');
+  } catch (e) {
+    loading.textContent = '載入失敗：' + e.message;
+  }
+}
+
+async function showOrderDetail(id) {
+  try {
+    const order = await api('/api/orders/' + id);
+    const modal = document.getElementById('order-modal');
+    const body  = document.getElementById('order-modal-body');
+    body.innerHTML = `
+      <div class="order-card ${order.status}">
+        <div class="order-header">
+          <span class="order-id">訂單 #${order.id}</span>
+          <span class="order-status status-${order.status}">${statusLabel(order.status)}</span>
+        </div>
+        <div class="order-items" style="margin-top:8px">
+          ${(order.items || []).map(i =>
+            `<div class="order-item-line">${i.name} × ${i.quantity}　$${i.unit_price * i.quantity}</div>`
+          ).join('')}
+        </div>
+        <div style="margin-top:10px">
+          <div style="font-size:0.85rem;color:#6d5344">顧客：${order.customer_name}　${order.customer_phone}</div>
+          ${order.notes ? `<div style="font-size:0.85rem;color:#8a7060;margin-top:2px">備註：${order.notes}</div>` : ''}
+          <div style="font-size:0.82rem;color:#a08070;margin-top:2px">${formatDate(order.created_at)}</div>
+        </div>
+        <div class="cart-summary" style="margin-top:10px">
+          <div class="cart-summary-row"><span>小計</span><span>$${order.subtotal}</span></div>
+          ${order.redeem_points > 0 ? `<div class="cart-summary-row"><span>點數折抵</span><span style="color:#c62828">-$${order.redeem_points}</span></div>` : ''}
+          <div class="cart-summary-row total"><span>實付</span><span>$${order.total}</span></div>
+          <div class="cart-summary-row earn"><span>累積點數</span><span>+${order.points_earned} 點</span></div>
+        </div>
+      </div>`;
+    modal.style.display = 'flex';
+  } catch (e) {
+    showMsg('error', e.message);
+  }
+}
+
+function closeOrderModal() {
+  document.getElementById('order-modal').style.display = 'none';
+}
+document.getElementById('order-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeOrderModal();
+});
+
+/* ═══════════════════════════════════════════
+   Tab 4：會員
+═══════════════════════════════════════════ */
+function loadMemberStatus() {
+  // 嘗試從 session 取得會員狀態（由 Flask session 帶入）
+  // 如果後端有 /api/members/me 可呼叫則顯示登入狀態
+  checkMemberSession();
+}
+
+async function checkMemberSession() {
+  try {
+    const data = await api('/api/members/points');
+    showMemberLoggedIn(data);
+  } catch {
+    showMemberAuth();
+  }
+}
+
+function showMemberAuth() {
+  document.getElementById('member-auth').style.display  = 'block';
+  document.getElementById('member-loggedin').style.display = 'none';
+}
+
+function showMemberLoggedIn(data) {
+  currentMember = { id: data.member_id, points: data.points };
+  document.getElementById('member-auth').style.display    = 'none';
+  document.getElementById('member-loggedin').style.display = 'block';
+  document.getElementById('m-points').textContent = data.points;
+
+  // 尝试从 session 取资料
+  fetch('/api/members/points')
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('m-name').textContent  = d._member_name || '(會員)';
+      document.getElementById('m-phone').textContent = d.phone || '';
+    }).catch(() => {});
+
+  renderPointsHistory(data.history || []);
+}
+
+function renderPointsHistory(history) {
+  const container = document.getElementById('points-history');
+  if (history.length === 0) {
+    container.innerHTML = '<div style="color:#a08070;font-size:0.85rem;text-align:center;padding:12px 0">尚無點數紀錄</div>';
+    return;
+  }
+  container.innerHTML = history.map(h => `
+    <div class="points-row">
+      <div>
+        <div class="points-desc">${h.description}</div>
+        <div class="points-date">${formatDate(h.created_at)}</div>
+      </div>
+      <div class="points-amount ${h.type}">
+        ${h.points > 0 ? '+' : ''}${h.points}
+      </div>
+    </div>`).join('');
+}
+
+/* ── 會員登入 ── */
+async function memberLogin(e) {
+  e.preventDefault();
+  const phone    = document.getElementById('login-phone').value.trim();
+  const password  = document.getElementById('login-password').value;
+  const errEl    = document.getElementById('auth-error');
+  errEl.classList.remove('show');
+
+  try {
+    const data = await api('/api/members/login', {
+      method: 'POST',
+      body: JSON.stringify({ phone, password }),
+    });
+    currentMember = { id: data.member_id, name: data.name, phone: data.phone, points: data.points };
+    document.getElementById('m-name').textContent  = data.name;
+    document.getElementById('m-phone').textContent = data.phone;
+    document.getElementById('m-points').textContent = data.points;
+    showMemberLoggedIn({ member_id: data.member_id, points: data.points, history: [] });
+    showMsg('success', `歡迎回來，${data.name}！您有 ${data.points} 點`);
+    // 重新渲染折抵資訊
+    renderCart();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.add('show');
+  }
+  return false;
+}
+
+/* ── 會員註冊 ── */
+async function memberRegister(e) {
+  e.preventDefault();
+  const name     = document.getElementById('reg-name').value.trim();
+  const phone    = document.getElementById('reg-phone').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const errEl    = document.getElementById('auth-error');
+  errEl.classList.remove('show');
+
+  try {
+    await api('/api/members/register', {
+      method: 'POST',
+      body: JSON.stringify({ name, phone, password }),
+    });
+    showMsg('success', '註冊成功！請登入');
+    // 切到登入 tab
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.toggle('active', t.dataset.auth === 'login'));
+    document.querySelectorAll('.auth-form').forEach(f => f.classList.toggle('active', f.id === 'login-form'));
+    document.getElementById('login-phone').value = phone;
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.add('show');
+  }
+  return false;
+}
+
+/* ── 會員登出 ── */
+async function memberLogout() {
+  try { await api('/api/members/logout', { method: 'POST' }); } catch {}
+  currentMember = null;
+  cart = {};
+  updateCartBadge();
+  showMemberAuth();
+  renderCart();
+  showMsg('info', '已登出');
+}
+
+/* ── Auth Tab 切換 ── */
+document.querySelectorAll('.auth-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.toggle('active', t === tab));
+    document.querySelectorAll('.auth-form').forEach(f =>
+      f.classList.toggle('active', f.id === (tab.dataset.auth === 'login' ? 'login-form' : 'register-form'))
+    );
+  });
+});
+
+/* ═══════════════════════════════════════════
+   工具函式
+═══════════════════════════════════════════ */
+function statusLabel(status) {
+  const map = { pending: '等待中', preparing: '製作中', completed: '已完成', cancelled: '已取消' };
+  return map[status] || status;
+}
+
+function formatDate(iso) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    return `${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+  } catch { return iso; }
+}
+
+/* ═══════════════════════════════════════════
+   初始化
+═══════════════════════════════════════════ */
+loadMenu();
+loadMemberStatus();
+</script>
+</body>
+</html>

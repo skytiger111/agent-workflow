@@ -1,0 +1,105 @@
+# Agent Workflow 通用預設設定
+# 此檔案為起點，複製並修改以適用於不同專案
+
+name: "generic-workflow"
+version: "1.0"
+
+project_root: "."
+git_remote: ""
+git_branch: "main"
+
+agents:
+  - name: planner
+    description: "規劃：分析需求，產出實作計劃"
+    prompt_template: |
+      分析以下需求，產出詳細實作計劃。
+
+      需求：{user_demand}
+
+      請產出 {artifacts_dir}/plan.md，包含：
+      - 功能拆解（每個任務 2-5 分鐘可完成）
+      - 技術決策（框架、資料結構、API 設計）
+      - 風險評估（可能的問題與對策）
+
+    artifacts:
+      - "{artifacts_dir}/plan.md"
+
+    commit_message: "chore: planner 完成實作規劃"
+
+  - name: backend-dev
+    description: "後端實作"
+    prompt_template: |
+      依據 plan.md 實作後端功能。
+
+      專案根目錄：{project_root}
+      計畫文件：{artifacts_dir}/plan.md
+
+      重要：
+      - 先讀取 plan.md 了解實作範圍
+      - 實作時保持程式碼簡潔
+      - 同步更新 {artifacts_dir}/api-contract.md（如有 API 變更）
+
+    artifacts:
+      - "{artifacts_dir}/api-contract.md"
+
+    commit_message: "feat: backend-dev 完成後端實作"
+
+  - name: frontend-dev
+    description: "前端實作"
+    prompt_template: |
+      依據 plan.md 和 api-contract.md 實作前端。
+
+      專案根目錄：{project_root}
+      計畫文件：{artifacts_dir}/plan.md
+      API 合約：{artifacts_dir}/api-contract.md
+
+      重要：
+      - 響應式設計（行動版優先）
+      - 錯誤處理與 loading 狀態
+
+    artifacts:
+      - "{artifacts_dir}/component-spec.md"
+
+    commit_message: "feat: frontend-dev 完成前端實作"
+
+  - name: tester
+    description: "測試"
+    prompt_template: |
+      為專案撰寫測試，確保核心功能正常運作。
+
+      專案根目錄：{project_root}
+      計畫文件：{artifacts_dir}/plan.md
+
+      測試原則：
+      - 單元測試：核心商業邏輯
+      - 整合測試：API 端點
+      - 錯誤情境：404、500、網路錯誤
+
+    artifacts:
+      - "{artifacts_dir}/test-report.md"
+
+    commit_message: "test: tester 完成測試撰寫"
+
+  - name: deployer
+    description: "部署"
+    prompt_template: |
+      整理並部署專案。
+
+      專案根目錄：{project_root}
+      Remote：{git_remote}
+
+      工作：
+      1. 確認所有檔案已 commit
+      2. 整理 README.md（如需要）
+      3. git push（如有 remote）
+
+    artifacts:
+      - "{artifacts_dir}/deploy-status.md"
+
+    commit_message: "deploy: 完成部署"
+
+handoff_footer: |
+  完成後：
+  1. 將產出寫入 {artifacts_dir}/ 對應檔案
+  2. 更新 {handoff_file}（round、current_agent、next_agent、last_outputs、focus_for_next）
+  3. 在 {project_root} 執行 git add + commit
