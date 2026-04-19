@@ -277,7 +277,7 @@ ${HANDSOFF_FOOTER:-}
     # Agent 寫入 output_file（subshell，隔離 cd）
     (
       cd "$PROJECT_ROOT" || exit 1
-      claude --print --agent "$agent_name" "$full_prompt"
+      claude --dangerously-skip-permissions --print --agent "$agent_name" "$full_prompt"
     ) >> "$output_file" 2>&1 || true
 
     # 等 Python 讀完尾部
