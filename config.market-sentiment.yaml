@@ -52,10 +52,11 @@ agents:
   description: 前端實作：情緒儀表板
   name: frontend-dev
   prompt_template: "依據 SPEC.md 和 api-contract.md 實作前端儀表板。\n\n⚠️ 重要：直接修改 {project_root}\
-    \ 內的前端程式碼\n⚠️ 規格文件只是參考，要真正實作前端 HTML/JS\n\n技術棧：HTML/CSS/JS（純靜態，不需打包工具）\n\n需實作：\n\
-    1. 即時列表頁面：逐筆新聞/文章的情緒分數卡片\n   - 文章標題、來源（鉅亨/PTT/Dcard）、時間\n   - 情緒分數視覺化（顏色：綠=正面、紅=負面、灰=中性）\n\
-    \   - 分數區間：≥0.6 綠色、≤-0.3 紅色、其他灰色\n2. 趨勢圖表：用 Chart.js 或純 JS 畫 7天/30天趨勢線\n   - 橫軸：日期\n\
-    \   - 縱軸：平均情緒分數\n3. 響應式設計：桌面 >768px / 手機 ≤768px\n\n後端 API 請見 {artifacts_dir}/api-contract.md\n"
+    \ 內的前端程式碼\n⚠️ 規格文件只是參考，要真正實作前端 HTML/JS\n\n\U0001F4A1 UI 設計參考：請在設計前先查閱 ~/claude/skills/frontend-design/SKILL.md，\n\
+    並在設計中實踐其核心原則，避免 AI 通用美學。\n\n技術棧：HTML/CSS/JS（純靜態，不需打包工具）\n\n需實作：\n1. 即時列表頁面：逐筆新聞/文章的情緒分數卡片\n\
+    \   - 文章標題、來源（鉅亨/PTT/Dcard）、時間\n   - 情緒分數視覺化（顏色：綠=正面、紅=負面、灰=中性）\n   - 分數區間：≥0.6\
+    \ 綠色、≤-0.3 紅色、其他灰色\n2. 趨勢圖表：用 Chart.js 或純 JS 畫 7天/30天趨勢線\n   - 橫軸：日期\n   - 縱軸：平均情緒分數\n\
+    3. 響應式設計：桌面 >768px / 手機 ≤768px\n\n後端 API 請見 {artifacts_dir}/api-contract.md\n"
 - artifacts:
   - '{artifacts_dir}/test-report.md'
   commit_message: 'test: tester 完成測試撰寫'
@@ -108,11 +109,8 @@ agents:
 
     2. 確保 remote URL 正確（走 SSH，不依賴 gh auth）：
 
-       ```bash
-       # 從 config 取出正確 URL
-       # git_remote: git@github.com:skytiger111/Market_Sentiment.git
-       git remote set-url origin {git_remote}
-       ```
+    ```bash # 從 config 取出正確 URL # git_remote: git@github.com:skytiger111/Market_Sentiment.git
+    git remote set-url origin {git_remote} ```
 
     3. git push origin {git_branch}
 
