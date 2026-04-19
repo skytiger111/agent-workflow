@@ -210,11 +210,11 @@ def api_resume():
 @app.route("/api/pipeline")
 def api_pipeline():
     """合併 handoff + git log，給 Pipeline Tab 使用"""
-    import glob, subprocess
-
     handoff = load_handoff()
     agents_cfg = handoff.get("agent_list", [])
-    completed = handoff.get("completed_agent", [])
+    completed_list = handoff.get("completed_agent", [])
+    if not isinstance(completed_list, list):
+        completed_list = []
     current = handoff.get("current_agent", "")
     focus = handoff.get("focus_for_next", "")
     status = handoff.get("status", "unknown")
@@ -223,7 +223,7 @@ def api_pipeline():
     for name in agents_cfg:
         if name == current and status == "in_progress":
             st = "running"
-        elif name in completed:
+        elif name in completed_list:
             st = "done"
         else:
             st = "pending"
@@ -248,7 +248,7 @@ def api_pipeline():
         except Exception:
             pass
 
-    return jsonify({"agents": agents, "commits": commits})
+    return jsonify({"agents": agents, "commits": commits, "round": handoff.get("round", 0)})
 
 
 @app.route("/api/workflow/run", methods=["POST"])

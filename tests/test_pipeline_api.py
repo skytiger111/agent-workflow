@@ -64,6 +64,8 @@ def test_pipeline_normal(workflow_app, tmp_path):
 
         assert agents[4]["name"] == "deployer"
         assert agents[4]["status"] == "pending"
+        assert data["round"] == 3
+        assert isinstance(data["commits"], list)
     finally:
         _app.HANDOFF = orig_handoff
         _app.ARTIFACTS_DIR = orig_artifacts
@@ -86,6 +88,8 @@ def test_pipeline_empty(workflow_app, tmp_path):
         assert rv.status_code == 200
         data = rv.get_json()
         assert data["agents"] == []
+        assert isinstance(data["commits"], list)
+        assert data["round"] == 0
     finally:
         _app.HANDOFF = orig_handoff
 
@@ -115,6 +119,8 @@ def test_pipeline_completed(workflow_app, tmp_path):
         data = rv.get_json()
         for a in data["agents"]:
             assert a["status"] == "done", f"{a['name']} 應為 done，實際為 {a['status']}"
+        assert isinstance(data["commits"], list)
+        assert data["round"] == 5
     finally:
         _app.HANDOFF = orig_handoff
 
@@ -144,8 +150,38 @@ def test_pipeline_custom_agents(workflow_app, tmp_path):
         data = rv.get_json()
         assert len(data["agents"]) == 3
         assert [a["name"] for a in data["agents"]] == ["planner", "backend-dev", "deployer"]
+        assert isinstance(data["commits"], list)
+        assert data["round"] == 1
     finally:
         _app.HANDOFF = orig_handoff
+
+
+# ---------------------------------------------------------------------------
+# 情境 E: current_agent 存在但 status 非 in_progress（狀態混亂）
+# ---------------------------------------------------------------------------
+def test_pipeline_mixed_status(workflow_app, tmp_path):
+    """current_agent 存在但 status 非 in_progress 時，視為 pending"""
+    handoff_data = {
+        "round": 0,
+        "current_agent": "backend-dev",
+        "completed_agent": [],
+        "agent_list": ["planner", "backend-dev", "deployer"],
+        "status": "pending",  # 非 in_progress
+    }
+    hp = make_handoff(tmp_path, handoff_data)
+
+    import app as _app
+    orig = _app.HANDOFF
+    _app.HANDOFF = hp
+    try:
+        client = workflow_app.test_client()
+        rv = client.get("/api/pipeline")
+        assert rv.status_code == 200
+        data = rv.get_json()
+        for a in data["agents"]:
+            assert a["status"] == "pending", f"{a['name']} 應為 pending，實際為 {a['status']}"
+    finally:
+        _app.HANDOFF = orig
 
 
 # ---------------------------------------------------------------------------
