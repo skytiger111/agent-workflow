@@ -1,4 +1,5 @@
 ## 更新紀錄
+- 2026-04-19 — feat: 新增 Pipeline Tab，含節點圖（done/running/pending 三態 + pulse 動畫）、詳情面板、commit 歷史，每 5 秒自動刷新
 - 2026-04-19 — feat: 新增 /api/pipeline 端點含 4 情境 TDD 測試（normal/empty/completed/custom agents）
 - 2026-04-19 — fix: 修補測試覆蓋缺口（mixed_status 情境、commits/round assert、completed_agent 型別保護）
 
