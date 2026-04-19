@@ -1,138 +1,138 @@
-# Market_Sentiment 工作流設定
-# 爬蟲 + LLM 情緒分析 + Flask API + 前端儀表板
-
-name: "market-sentiment"
-version: "1.0"
-project_root: "/Users/tigerclaw/code/Market_Sentiment"
-git_remote: "https://github.com/skytiger111/market-sentiment.git"
-git_branch: "main"
-
+name: config.market-sentiment.yaml
+version: '1.0'
+project_root: /Users/tigerclaw/code/Market_Sentiment
+git_remote: https://github.com/skytiger111/Market_Sentiment
+git_branch: main
 agents:
-  - name: analyzer
-    description: "需求分析：產出 SPEC.md"
-    prompt_template: |
-      需求：{user_demand}
+- artifacts:
+  - '{artifacts_dir}/SPEC.md'
+  commit_message: 'chore: analyzer 完成需求分析'
+  description: 需求分析：產出 SPEC.md
+  name: analyzer
+  prompt_template: '需求：{user_demand}
 
-      現有專案結構：
-      {project_files}
 
-      請產出 {artifacts_dir}/SPEC.md，包含：
-      - 功能範圍與 YAGNI 邊界
-      - 爬蟲模組設計（鉅亨網新聞 + PTT/Dcard）
-      - LLM 情緒分析 API 設計（request/response 格式）
-      - Flask API 端點設計
-      - 前端儀表板佈局與元件
-      - 資料庫 schema（歷史記錄儲存）
-      - 異常處理對應 HTTP 狀態碼
+    現有專案結構：
 
-    artifacts:
-      - "{artifacts_dir}/SPEC.md"
+    {project_files}
 
-    commit_message: "chore: analyzer 完成需求分析"
 
-  - name: backend-dev
-    description: "後端實作：爬蟲 + 情緒分析 API"
-    prompt_template: |
-      依據 SPEC.md 實作後端功能。
+    請產出 {artifacts_dir}/SPEC.md，包含：
 
-      ⚠️ 重要：直接修改 {project_root} 內的程式碼
-      ⚠️ API 合約只是規格參考，要真正實作後端程式碼
+    - 功能範圍與 YAGNI 邊界
 
-      技術棧：Python 3 + Flask + Requests（爬蟲）+ SQLite（歷史記錄）
-      LLM API：金鑰在環境變數 OPENAI_API_KEY 或 ANTHROPIC_API_KEY
+    - 爬蟲模組設計（鉅亨網新聞 + PTT/Dcard）
 
-      需實作：
-      1. 爬蟲模組：鉅亨網新聞爬蟲 + PTT/Dcard API
-      2. 情緒分析：呼叫 LLM 對文章標題/內容打分數（-1 到 1 或 0-100）
-      3. Flask API 端點：
-         - GET /api/news — 最新文章列表（含情緒分數）
-         - GET /api/trend?days=7 — 7天趨勢
-         - GET /api/trend?days=30 — 30天趨勢
-         - GET /api/summary — 當日摘要（平均分數、文章數）
-      4. SQLite 資料庫：儲存歷史爬蟲結果與情緒分數
-      5. 在 {artifacts_dir}/api-contract.md 補上 API 合約文件
+    - LLM 情緒分析 API 設計（request/response 格式）
 
-    artifacts:
-      - "{artifacts_dir}/api-contract.md"
+    - Flask API 端點設計
 
-    commit_message: "feat: backend-dev 完成爬蟲與情緒分析 API"
+    - 前端儀表板佈局與元件
 
-  - name: frontend-dev
-    description: "前端實作：情緒儀表板"
-    prompt_template: |
-      依據 SPEC.md 和 api-contract.md 實作前端儀表板。
+    - 資料庫 schema（歷史記錄儲存）
 
-      ⚠️ 重要：直接修改 {project_root} 內的前端程式碼
-      ⚠️ 規格文件只是參考，要真正實作前端 HTML/JS
+    - 異常處理對應 HTTP 狀態碼
 
-      技術棧：HTML/CSS/JS（純靜態，不需打包工具）
+    '
+- artifacts:
+  - '{artifacts_dir}/api-contract.md'
+  commit_message: 'feat: backend-dev 完成爬蟲與情緒分析 API'
+  description: 後端實作：爬蟲 + 情緒分析 API
+  name: backend-dev
+  prompt_template: "依據 SPEC.md 實作後端功能。\n\n⚠️ 重要：直接修改 {project_root} 內的程式碼\n⚠️ API\
+    \ 合約只是規格參考，要真正實作後端程式碼\n\n技術棧：Python 3 + Flask + Requests（爬蟲）+ SQLite（歷史記錄）\nLLM\
+    \ API：金鑰在環境變數 OPENAI_API_KEY 或 ANTHROPIC_API_KEY\n\n需實作：\n1. 爬蟲模組：鉅亨網新聞爬蟲 + PTT/Dcard\
+    \ API\n2. 情緒分析：呼叫 LLM 對文章標題/內容打分數（-1 到 1 或 0-100）\n3. Flask API 端點：\n   - GET\
+    \ /api/news — 最新文章列表（含情緒分數）\n   - GET /api/trend?days=7 — 7天趨勢\n   - GET /api/trend?days=30\
+    \ — 30天趨勢\n   - GET /api/summary — 當日摘要（平均分數、文章數）\n4. SQLite 資料庫：儲存歷史爬蟲結果與情緒分數\n\
+    5. 在 {artifacts_dir}/api-contract.md 補上 API 合約文件\n"
+- artifacts:
+  - '{artifacts_dir}/component-spec.md'
+  commit_message: 'feat: frontend-dev 完成情緒儀表板'
+  description: 前端實作：情緒儀表板
+  name: frontend-dev
+  prompt_template: "依據 SPEC.md 和 api-contract.md 實作前端儀表板。\n\n⚠️ 重要：直接修改 {project_root}\
+    \ 內的前端程式碼\n⚠️ 規格文件只是參考，要真正實作前端 HTML/JS\n\n技術棧：HTML/CSS/JS（純靜態，不需打包工具）\n\n需實作：\n\
+    1. 即時列表頁面：逐筆新聞/文章的情緒分數卡片\n   - 文章標題、來源（鉅亨/PTT/Dcard）、時間\n   - 情緒分數視覺化（顏色：綠=正面、紅=負面、灰=中性）\n\
+    \   - 分數區間：≥0.6 綠色、≤-0.3 紅色、其他灰色\n2. 趨勢圖表：用 Chart.js 或純 JS 畫 7天/30天趨勢線\n   - 橫軸：日期\n\
+    \   - 縱軸：平均情緒分數\n3. 響應式設計：桌面 >768px / 手機 ≤768px\n\n後端 API 請見 {artifacts_dir}/api-contract.md\n"
+- artifacts:
+  - '{artifacts_dir}/test-report.md'
+  commit_message: 'test: tester 完成測試撰寫'
+  description: 測試：單元測試與整合測試
+  name: tester
+  prompt_template: '為 Market_Sentiment 撰寫測試。
 
-      需實作：
-      1. 即時列表頁面：逐筆新聞/文章的情緒分數卡片
-         - 文章標題、來源（鉅亨/PTT/Dcard）、時間
-         - 情緒分數視覺化（顏色：綠=正面、紅=負面、灰=中性）
-         - 分數區間：≥0.6 綠色、≤-0.3 紅色、其他灰色
-      2. 趨勢圖表：用 Chart.js 或純 JS 畫 7天/30天趨勢線
-         - 橫軸：日期
-         - 縱軸：平均情緒分數
-      3. 響應式設計：桌面 >768px / 手機 ≤768px
 
-      後端 API 請見 {artifacts_dir}/api-contract.md
+    SPEC.md：{artifacts_dir}/SPEC.md
 
-    artifacts:
-      - "{artifacts_dir}/component-spec.md"
+    後端入口：{project_root}/app.py（Flask）
 
-    commit_message: "feat: frontend-dev 完成情緒儀表板"
+    測試框架：pytest
 
-  - name: tester
-    description: "測試：單元測試與整合測試"
-    prompt_template: |
-      為 Market_Sentiment 撰寫測試。
 
-      SPEC.md：{artifacts_dir}/SPEC.md
-      後端入口：{project_root}/app.py（Flask）
-      測試框架：pytest
+    測試目標：
 
-      測試目標：
-      - 爬蟲模組：模擬 HTTP 回應，測試解析邏輯
-      - 情緒分析：Mock LLM API 回應，測試分數計算
-      - API 端點：測試 /api/news、/api/trend、/api/summary
-      - 錯誤情境：404、503、逾時
-      - 資料庫：歷史記錄讀寫
+    - 爬蟲模組：模擬 HTTP 回應，測試解析邏輯
 
-      測試檔放在 {project_root}/tests/
+    - 情緒分析：Mock LLM API 回應，測試分數計算
 
-    artifacts:
-      - "{artifacts_dir}/test-report.md"
+    - API 端點：測試 /api/news、/api/trend、/api/summary
 
-    commit_message: "test: tester 完成測試撰寫"
+    - 錯誤情境：404、503、逾時
 
-  - name: deployer
-    description: "部署：整理程式碼，推送到 GitHub"
-    prompt_template: |
-      將 Market_Sentiment 部署到 GitHub。
+    - 資料庫：歷史記錄讀寫
 
-      專案根目錄：{project_root}
-      Remote：{git_remote}
-      分支：{git_branch}
 
-      工作：
-      1. 確認所有檔案已 commit（git status）
-      2. 第一次部署需要初始化 GitHub repo（使用 gh CLI 或手動建立）
-      3. git push origin {git_branch}
-      4. 在 {project_root}/README.md 寫專案說明文件（功能、安裝方式、使用方式）
-      5. 更新 {artifacts_dir}/deploy-status.md（部署時間、版本號、推送結果）
+    測試檔放在 {project_root}/tests/
 
-    artifacts:
-      - "{artifacts_dir}/deploy-status.md"
+    '
+- artifacts:
+  - '{artifacts_dir}/deploy-status.md'
+  commit_message: 'deploy: 完成部署'
+  description: 部署：整理程式碼，推送到 GitHub
+  name: deployer
+  prompt_template: '將 Market_Sentiment 部署到 GitHub。
 
-    commit_message: "deploy: 完成部署"
 
-handoff_footer: |
-  ⚠️ analyzer 和規格文件（SPEC.md、api-contract.md）寫入 {artifacts_dir}/
+    專案根目錄：{project_root}
+
+    Remote：{git_remote}
+
+    分支：{git_branch}
+
+
+    工作：
+
+    1. 確認所有檔案已 commit（git status）
+
+    2. 確保 remote URL 正確（走 SSH，不依賴 gh auth）：
+
+       ```bash
+       # 從 config 取出正確 URL
+       # git_remote: git@github.com:skytiger111/Market_Sentiment.git
+       git remote set-url origin {git_remote}
+       ```
+
+    3. git push origin {git_branch}
+
+    4. 在 {project_root}/README.md 寫專案說明文件（功能、安裝方式、使用方式）
+
+    5. 更新 {artifacts_dir}/deploy-status.md（部署時間、版本號、推送結果）
+
+    '
+handoff_footer: '⚠️ analyzer 和規格文件（SPEC.md、api-contract.md）寫入 {artifacts_dir}/
+
   ⚠️ 實作類（backend-dev、frontend-dev）直接修改 {project_root} 內的程式碼
+
   ⚠️ 完成後：
+
   1. 實作程式碼 → {project_root}/
+
   2. 規格文件 → {artifacts_dir}/
+
   3. 更新 {handoff_file}
+
   4. 在 {project_root} 執行 git add + commit
+
+  '
