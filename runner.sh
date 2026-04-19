@@ -80,6 +80,7 @@ print(footer)
 #------------------------------------------
 init_dirs() {
   mkdir -p "$ARTIFACTS_DIR"
+  mkdir -p "$PROJECT_ROOT"
   [[ ! -f "$LOG_FILE" ]] && echo "# Workflow Log" > "$LOG_FILE"
   [[ ! -f "$HANDOFF" ]] && echo '{}' > "$HANDOFF"
   true
@@ -141,6 +142,14 @@ ensure_remote() {
   fi
   (
     cd "$PROJECT_ROOT" || exit 1
+
+    # 如果不是 git repo，先初始化
+    if [[ ! -d ".git" ]]; then
+      info "初始化 Git repo: $PROJECT_ROOT"
+      git init
+    fi
+
+    # 設定 remote
     if [[ -n "$GIT_REMOTE" ]]; then
       local remote
       remote=$(git remote get-url origin 2>/dev/null || echo "")
@@ -148,6 +157,12 @@ ensure_remote() {
         info "設定 remote origin..."
         git remote add origin "$GIT_REMOTE" 2>/dev/null || git remote set-url origin "$GIT_REMOTE"
       fi
+    fi
+
+    # 如果沒有任何 commit，先做一個空 commit（確保可以後續分支）
+    if ! git rev-parse HEAD >/dev/null 2>&1; then
+      info "建立初始 commit"
+      git commit --allow-empty -m "chore: 初始 commit — 由 agent-workflow 建立"
     fi
   )
 }
@@ -229,7 +244,19 @@ ${HANDSOFF_FOOTER:-}
   if command -v claude &>/dev/null; then
     # 捕獲輸出並偵測是否需要用戶輸入
     local output_file="${WORKFLOW_DIR}/.agent_output_$$.tmp"
-    claude --print --agent "$agent_name" "$full_prompt" > "$output_file" 2>&1 || true
+
+    # 確保 PROJECT_ROOT 存在，並在該目錄執行 claude --print
+    # （claude 的 bash 工具預設 cwd 為流程工作目錄）
+    if [[ ! -d "$PROJECT_ROOT" ]]; then
+      mkdir -p "$PROJECT_ROOT"
+      info "已建立 PROJECT_ROOT: $PROJECT_ROOT"
+    fi
+
+    # 在 PROJECT_ROOT 的 subshell 中執行，讓 bash 工具的 cwd 正確
+    (
+      cd "$PROJECT_ROOT" || exit 1
+      claude --print --agent "$agent_name" "$full_prompt"
+    ) > "$output_file" 2>&1 || true
 
     # 偵測 Agent 是否在等待用戶輸入
     local needs_input=false
