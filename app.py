@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Agent Workflow Web UI — Flask 後端"""
 import os, sys, json, subprocess, threading
+from datetime import datetime
 import yaml
 from flask import Flask, render_template, jsonify, request, Response, stream_with_context
 
@@ -59,7 +60,22 @@ def load_handoff() -> dict:
 
 
 def load_log() -> str:
-    if os.path.exists(LOG_FILE):
+    handoff = load_handoff()
+    project_name = handoff.get("project_name", "")
+    today = datetime.now().strftime("%Y%m%d")
+    if project_name:
+        log_dir = os.path.join(BASE_DIR, "projects", project_name)
+        pattern = f"log-{today}.md"
+        candidates = []
+        if os.path.isdir(log_dir):
+            for f in os.listdir(log_dir):
+                if f.startswith("log-") and f.endswith(".md"):
+                    candidates.append(os.path.join(log_dir, f))
+        if candidates:
+            candidates.sort(key=os.path.getmtime, reverse=True)
+            with open(candidates[0], encoding="utf-8") as fh:
+                return fh.read()
+    elif os.path.exists(LOG_FILE):
         with open(LOG_FILE, encoding="utf-8") as f:
             return f.read()
     return ""

@@ -83,7 +83,7 @@ print(name)
 " 2>/dev/null || echo "default")
 
     ARTIFACTS_DIR="${WORKFLOW_DIR}/projects/${PROJECT_NAME}/artifacts"
-    LOG_FILE="${WORKFLOW_DIR}/projects/${PROJECT_NAME}/log.md"
+    LOG_FILE="${WORKFLOW_DIR}/projects/${PROJECT_NAME}/log-$(date '+%Y%m%d').md"
     info "Artifacts 目錄: $ARTIFACTS_DIR"
     info "Log 檔案: $LOG_FILE"
   else
