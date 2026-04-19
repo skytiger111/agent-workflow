@@ -242,30 +242,29 @@ PROMPT
 )
 
   if command -v claude &>/dev/null; then
-    # Python 串流：邊 tail 檔案邊輸出到 stdout（即時送 Flask SSE）
-    local output_file="${WORKFLOW_DIR}/.agent_output_$$.tmp"
-
     # 確保 PROJECT_ROOT 存在
     if [[ ! -d "$PROJECT_ROOT" ]]; then
       mkdir -p "$PROJECT_ROOT"
       info "已建立 PROJECT_ROOT: $PROJECT_ROOT"
     fi
 
-    # 先建立空檔，確保 Python tail 有檔案可讀
+    # Agent 輸出直接串流到 stdout（ → Flask subprocess pipe → SSE）
+    # 雙重輸出：同時寫入 output file（用於檢測用戶輸入）
+    local output_file="${WORKFLOW_DIR}/shared-context/.agent_output"
     > "$output_file"
 
-    # 啟動 Python 串流（background，stdout → Flask pipe）
-    python3 "$WORKFLOW_DIR/lib/stream_output.py" "$output_file" &
+    # 啟動 Python tail 寫入 output_file（用於檢測 needs_input）
+    python3 "$WORKFLOW_DIR/lib/stream_output.py" "$output_file" >> "$output_file" 2>&1 &
     local streamer_pid=$!
 
-    # Agent 寫入 output_file（subshell，隔離 cd）
+    # Agent 直接輸出到 stdout（送 Flask SSE pipe）
     (
       cd "$PROJECT_ROOT" || exit 1
-      claude --dangerously-skip-permissions --print --agent "$agent_name" "$full_prompt"
-    ) >> "$output_file" 2>&1 || true
+      claude --dangerously-skip-permissions --print --agent "$agent_name" "$full_prompt" 2>&1
+    ) | tee -a "$output_file"
 
-    # 等 Python 讀完尾部
-    sleep 2
+    # 等 tail 處理完
+    sleep 1
     kill $streamer_pid 2>/dev/null || true
     wait $streamer_pid 2>/dev/null || true
 
@@ -278,7 +277,6 @@ PROMPT
     rm -f "$output_file"
 
     if [[ "$needs_input" == true ]]; then
-      # 回傳 exit code 10 表示需要用戶輸入
       return 10
     fi
   else

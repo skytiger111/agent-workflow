@@ -1,70 +1,53 @@
 #!/usr/bin/env python3
-"""即時串流 Agent 輸出到 stdout（送 Flask SSE pipe），同時寫入檔案。"""
-import sys, os, time, threading
+"""即時串流 Agent 輸出：邊 tail 檔案邊寫入固定路徑，供 Flask SSE 直接讀取。"""
+import sys, os, time
+
+OUTPUT_FIXED = os.path.join(os.path.dirname(__file__), "..", "shared-context", ".agent_output")
 
 if len(sys.argv) < 2:
-    print("Usage: stream_output.py <output_file> [pid_to_watch]", file=sys.stderr)
-    sys.exit(1)
+    output_file = OUTPUT_FIXED
+else:
+    output_file = sys.argv[1]
 
-output_file = sys.argv[1]
-watch_pid = int(sys.argv[2]) if len(sys.argv) > 2 else None
-MAX_LINES = 200
-
-# 等檔案出現
-for _ in range(20):
-    if os.path.exists(output_file):
-        break
-    time.sleep(0.1)
-
-last_pos = 0
+MAX_LINES = 500
 count = 0
 
-def is_process_running(pid):
-    try:
-        os.kill(pid, 0)
-        return True
-    except OSError:
-        return False
+# 等 agent 開始寫入（最多 3 秒）
+for _ in range(60):
+    if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
+        break
+    time.sleep(0.05)
+
+last_pos = 0
 
 while True:
-    if os.path.exists(output_file):
-        try:
-            size = os.path.getsize(output_file)
-            if size > last_pos:
-                with open(output_file, "r", encoding="utf-8", errors="replace") as f:
-                    f.seek(last_pos)
-                    for line in f:
-                        if count >= MAX_LINES:
-                            break
-                        # flush=True 確保送到 Flask SSE pipe
-                        print(line, end="", flush=True)
-                        count += 1
-                last_pos = size
-        except Exception:
-            pass
-
-    # 檢查 agent 行程是否已結束
-    done = (watch_pid is not None and not is_process_running(watch_pid)) or (watch_pid is None and last_pos == 0)
-
-    if done:
-        time.sleep(0.3)
-        if os.path.exists(output_file):
-            try:
-                size = os.path.getsize(output_file)
-                if size > last_pos:
-                    with open(output_file, "r", encoding="utf-8", errors="replace") as f:
-                        f.seek(last_pos)
-                        for line in f:
-                            if count >= MAX_LINES:
-                                break
-                            print(line, end="", flush=True)
-                            count += 1
-            except Exception:
-                pass
+    if not os.path.exists(output_file):
         break
+    try:
+        size = os.path.getsize(output_file)
+        if size > last_pos:
+            with open(output_file, "r", encoding="utf-8", errors="replace") as f:
+                f.seek(last_pos)
+                for line in f:
+                    if count >= MAX_LINES:
+                        break
+                    sys.stdout.write(line)
+                    sys.stdout.flush()
+                    count += 1
+            last_pos = size
+    except Exception:
+        pass
+
+    # 檔案大小不再變 → agent 可能結束
+    time.sleep(0.3)
+    if os.path.exists(output_file) and os.path.getsize(output_file) == last_pos:
+        # 再等一次確認不是还在写
+        time.sleep(1.0)
+        if os.path.exists(output_file) and os.path.getsize(output_file) == last_pos:
+            break
 
     if count >= MAX_LINES:
-        print(f"\n...（已截斷顯示，共 {MAX_LINES} 行）", flush=True)
+        sys.stdout.write(f"\n...（已截斷顯示，共 {MAX_LINES} 行）\n")
         break
 
-    time.sleep(0.05)
+sys.exit(0)
