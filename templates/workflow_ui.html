@@ -526,6 +526,25 @@ async function refreshStatus() {
     const cfgName = cfgSel.value || currentConfig;
     document.getElementById("project-badge").textContent = cfgName;
 
+    // Poll workflow subprocess state → sync wizard header controls
+    const poll = await fetch("/api/workflow/poll");
+    const { running } = await poll.json();
+    const stopBtn = document.getElementById("btn-stop");
+    if (!running) {
+      // Subprocess ended → close SSE, update wizard header
+      if (es) { es.close(); es = null; }
+      document.getElementById("proc-status").textContent = "○ 已結束";
+      stopBtn.style.display = "none";
+      document.getElementById("btn-start").disabled = false;
+      document.getElementById("btn-resume").disabled = false;
+    } else {
+      // Still running
+      if (!es) {
+        document.getElementById("proc-status").textContent = "● 執行中…";
+        stopBtn.style.display = "";
+      }
+    }
+
     // Populate agent-select
     await loadAgentsForSelect();
   } catch(e) { console.error(e); }
